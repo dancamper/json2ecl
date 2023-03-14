@@ -6,6 +6,17 @@
 
 ;;;
 
+(adopt:define-string *help-text*
+  "json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to parse it.")
+
+(defparameter *ui*
+  (adopt:make-interface :name "json2ecl"
+                        :usage "[FILE...]"
+                        :summary "Analyze a JSON data and emit matching ECL record definitions."
+                        :help *help-text*))
+
+;;;
+
 (defvar *layout-names* nil)
 
 ;;;
@@ -208,7 +219,37 @@
 
 (defun process-file (input)
   (let ((parsed-obj nil))
-    (setf *layout-names* nil)
     (jzon:with-parser (parser input)
       (setf parsed-obj (parse-obj nil parser)))
     parsed-obj))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-condition user-error (error) ())
+
+(defmacro exit-on-ctrl-c (&body body)
+  `(handler-case (with-user-abort:with-user-abort (progn ,@body))
+     (with-user-abort:user-abort () (adopt:exit 130))))
+
+(defun run (&optional (input "-"))
+  (setf *layout-names* nil)
+  (let* ((input (car input))
+         (file-path (uiop:probe-file* input))
+         (process-arg (cond (file-path file-path)
+                            ((string= input "-") *standard-input*)
+                            ((string= input "") *standard-input*)
+                            (t input)))
+         (parsed-input (process-file process-arg))
+         (name (if file-path (pathname-name file-path) (format nil "~A" (gensym "toplevel_")))))
+    (format t "~A" (as-ecl-recdef parsed-input name))))
+
+(defun toplevel (argv)
+  (declare (ignore argv)) ; Arguments handled by Adopt
+  (sb-ext:disable-debugger)
+  (exit-on-ctrl-c
+    (multiple-value-bind (arguments options) (adopt:parse-options-or-exit *ui*)
+      ;; Handle options
+      (declare (ignore options))
+      (handler-case (run arguments)
+        (user-error (e) (adopt:print-error-and-exit e)))))
+  (uiop:quit))

@@ -2,4 +2,5 @@
 
 (uiop/package:define-package #:json2ecl
     (:use #:cl)
-  (:local-nicknames (#:jzon #:com.inuoe.jzon)))
+  (:local-nicknames (#:jzon #:com.inuoe.jzon))
+  (:export :toplevel :*ui*))
