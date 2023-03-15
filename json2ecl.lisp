@@ -4,6 +4,8 @@
 
 (in-package #:json2ecl)
 
+;; (declaim (optimize (debug 3)))
+
 ;;;
 
 (adopt:define-string *help-text*
@@ -63,12 +65,18 @@
                     no-dashes)))
     legal))
 
+(defun legal-layout-name (name)
+  (string-upcase (substitute #\_ #\- name)))
+
 (defun layout-name (name)
-  (let* ((legal-name (string-upcase (substitute #\_ #\- name)))
+  (let* ((legal-name (legal-layout-name name))
          (name-count (count-if #'(lambda (x) (equalp x legal-name)) *layout-names*))
          (interstitial (if (zerop name-count) "" (format nil "_~3,'0D" name-count))))
-    (push legal-name *layout-names*)
     (format nil "~A~A_LAYOUT" legal-name interstitial)))
+
+(defun register-layout-name (name)
+  (let ((legal-name (legal-layout-name name)))
+    (push legal-name *layout-names*)))
 
 (defun ecl-xpath (name)
   (format nil "{XPATH('~A')}" name))
@@ -76,7 +84,7 @@
 (defun ecl-type (value-type)
   (case value-type
     (boolean "BOOLEAN")
-    (symbol "STRING")
+    (null "STRING")
     (string "STRING")
     (utf8 "UTF8")
     (number "INTEGER")))
@@ -107,6 +115,7 @@
 (defmethod as-ecl-recdef ((obj object-item) name)
   (let* ((result-str "")
          (my-str (with-output-to-string (s)
+                   (register-layout-name name)
                    (format s "~A := RECORD~%" (layout-name name))
                    (loop for field-name being the hash-keys of (keys obj)
                            using (hash-value field-value)
@@ -114,7 +123,8 @@
                               (when (string/= child-recdef "")
                                 (setf result-str (format nil "~A~A" result-str child-recdef)))
                               (format s "~A" (as-ecl-fielddef field-value field-name))))
-                   (format s "END;~%~%"))))
+                   (format s "END;~%~%")
+                   )))
     (format nil "~A~A" result-str my-str)))
 
 (defmethod as-ecl-recdef ((obj array-item) name)
@@ -126,14 +136,15 @@
 
 (defmacro reuse-object (place classname)
   `(progn
-     (cond ((null ,place)
+     (cond ((or (null ,place) (eql ,place 'null))
             (setf ,place (make-instance ,classname)))
            ((not (typep ,place ,classname))
             (error "Mismatching object types")))
      ,place))
 
 (defmacro parse-simple (place value)
-  `(setf ,place (common-type (base-type ,value) ,place)))
+  `(unless (eql (base-type ,value) 'null)
+     (setf ,place (common-type (base-type ,value) ,place))))
 
 (defmacro parse-complex (place classname parser)
   `(progn
@@ -146,7 +157,7 @@
   (etypecase thing
     ((eql t) 'boolean)
     ((eql nil) 'boolean)
-    ((eql null) 'symbol)
+    ((eql null) 'null)
     (integer 'number)
     (double-float 'number)
     (string 'utf8)))
@@ -159,15 +170,26 @@
 
 ;;;
 
-(defmethod parse-obj ((obj array-item) parser)
+(defmethod parse-obj ((obj array-item) parser &optional (startingp nil))
   (loop named parse
         do (multiple-value-bind (event value) (jzon:parse-next parser)
-             (cond ((null event)
+             (cond (startingp
+                    (cond ((null event)
+                           (return-from parse))
+                          ((eql event :begin-array)
+                           (reuse-object obj 'array-item)
+                           (parse-obj obj parser))
+                          ((eql event :begin-object)
+                           (reuse-object obj 'object-item)
+                           (parse-obj obj parser))
+                          (t
+                           (error "Unknown object at toplevel: (~A,~A)" event value))))
+                   ((null event)
                     (error "Unexpected end of file"))
                    ((eql event :end-array)
                     (return-from parse))
                    ((eql event :value)
-                    (parse-simple(element-type obj) value))
+                    (parse-simple (element-type obj) value))
                    ((eql event :begin-array)
                     (parse-complex (object-prototype obj) 'array-item parser))
                    ((eql event :begin-object)
@@ -176,10 +198,21 @@
                     (error "Unknown object while parsing array: (~A,~A)" event value)))))
   obj)
 
-(defmethod parse-obj ((obj object-item) parser)
+(defmethod parse-obj ((obj object-item) parser &optional (startingp nil))
   (loop named parse
         do (multiple-value-bind (event value) (jzon:parse-next parser)
-             (cond ((null event)
+             (cond (startingp
+                    (cond ((null event)
+                           (return-from parse))
+                          ((eql event :begin-array)
+                           (reuse-object obj 'array-item)
+                           (parse-obj obj parser))
+                          ((eql event :begin-object)
+                           (reuse-object obj 'object-item)
+                           (parse-obj obj parser))
+                          (t
+                           (error "Unknown object at toplevel: (~A,~A)" event value))))
+                   ((null event)
                     (error "Unexpected end of file"))
                    ((eql event :end-object)
                     (return-from parse))
@@ -198,8 +231,8 @@
                     (error "Unknown object while parsing object: (~A,~A)" event value)))))
   obj)
 
-(defmethod parse-obj ((obj t) parser)
-  (declare (ignore obj))
+(defmethod parse-obj ((obj t) parser &optional (startingp nil))
+  (declare (ignore obj startingp))
   (let ((top-object nil))
     (loop named parse
           do (multiple-value-bind (event value) (jzon:parse-next parser)
@@ -217,11 +250,10 @@
 
 ;;;
 
-(defun process-file (input)
-  (let ((parsed-obj nil))
-    (jzon:with-parser (parser input)
-      (setf parsed-obj (parse-obj nil parser)))
-    parsed-obj))
+(defun process-file (input &optional (parsed-obj nil))
+  (jzon:with-parser (parser input)
+    (setf parsed-obj (parse-obj parsed-obj parser t)))
+  parsed-obj)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -231,17 +263,17 @@
   `(handler-case (with-user-abort:with-user-abort (progn ,@body))
      (with-user-abort:user-abort () (adopt:exit 130))))
 
-(defun run (&optional (input "-"))
-  (setf *layout-names* nil)
-  (let* ((input (car input))
-         (file-path (uiop:probe-file* input))
-         (process-arg (cond (file-path file-path)
-                            ((string= input "-") *standard-input*)
-                            ((string= input "") *standard-input*)
-                            (t input)))
-         (parsed-input (process-file process-arg))
-         (name (if file-path (pathname-name file-path) (format nil "~A" (gensym "toplevel_")))))
-    (format t "~A" (as-ecl-recdef parsed-input name))))
+(defun run (args)
+  (let ((argc (length args)))
+    (when (plusp argc)
+      (let ((toplevel-name (if (= argc 1)
+                               (pathname-name (uiop:probe-file* (car args)))
+                               (format nil "~A" (gensym "toplevel_"))))
+            (result-obj nil))
+        (loop for input in args
+              do (setf result-obj (process-file (uiop:probe-file* input) result-obj)))
+        (setf *layout-names* nil)
+        (format t "~A" (as-ecl-recdef result-obj toplevel-name))))))
 
 (defun toplevel (argv)
   (declare (ignore argv)) ; Arguments handled by Adopt
