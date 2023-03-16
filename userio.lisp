@@ -42,16 +42,17 @@
      (with-user-abort:user-abort () (adopt:exit 130))))
 
 (defun run (args)
-  (let ((argc (length args)))
-    (when (plusp argc)
-      (let ((toplevel-name (if (= argc 1)
-                               (pathname-name (uiop:probe-file* (car args)))
-                               (format nil "~A" (gensym "toplevel_"))))
-            (result-obj nil))
-        (loop for input in args
-              do (setf result-obj (process-file (uiop:probe-file* input) result-obj)))
-        (setf *layout-names* nil)
-        (format t "~A" (as-ecl-recdef result-obj toplevel-name))))))
+  (let* ((argc (length args))
+         (args (if (plusp argc) args (list *standard-input*))))
+    (let ((toplevel-name (if (= argc 1)
+                             (pathname-name (uiop:probe-file* (car args)))
+                             (format nil "~A" (gensym "toplevel_"))))
+          (result-obj nil))
+      (loop for input in args
+            do (let ((one-item (or (uiop:probe-file* input) input)))
+                 (setf result-obj (process-file-or-stream one-item result-obj))))
+      (setf *layout-names* nil)
+      (format t "~A" (as-ecl-recdef result-obj toplevel-name)))))
 
 (defun toplevel (argv)
   (sb-ext:disable-debugger)

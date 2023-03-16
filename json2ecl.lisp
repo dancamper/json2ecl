@@ -239,7 +239,7 @@
 
 ;;;
 
-(defun process-file (input &optional (parsed-obj nil))
+(defun process-file-or-stream (input &optional (parsed-obj nil))
   (jzon:with-parser (parser input)
     (setf parsed-obj (parse-obj parsed-obj parser t)))
   parsed-obj)
