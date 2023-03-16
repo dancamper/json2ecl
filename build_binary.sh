@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+#############################################
+# Uses buildapp utility to create a binary
+#
+# https://www.xach.com/lisp/buildapp/
+#############################################
+
 set -euo pipefail
 
 mkdir -p bin

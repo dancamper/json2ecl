@@ -8,17 +8,6 @@
 
 ;;;
 
-(adopt:define-string *help-text*
-  "json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to parse it.")
-
-(defparameter *ui*
-  (adopt:make-interface :name "json2ecl"
-                        :usage "[FILE...]"
-                        :summary "Analyze a JSON data and emit matching ECL record definitions."
-                        :help *help-text*))
-
-;;;
-
 (defvar *layout-names* nil)
 
 ;;;
@@ -255,33 +244,3 @@
     (setf parsed-obj (parse-obj parsed-obj parser t)))
   parsed-obj)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-condition user-error (error) ())
-
-(defmacro exit-on-ctrl-c (&body body)
-  `(handler-case (with-user-abort:with-user-abort (progn ,@body))
-     (with-user-abort:user-abort () (adopt:exit 130))))
-
-(defun run (args)
-  (let ((argc (length args)))
-    (when (plusp argc)
-      (let ((toplevel-name (if (= argc 1)
-                               (pathname-name (uiop:probe-file* (car args)))
-                               (format nil "~A" (gensym "toplevel_"))))
-            (result-obj nil))
-        (loop for input in args
-              do (setf result-obj (process-file (uiop:probe-file* input) result-obj)))
-        (setf *layout-names* nil)
-        (format t "~A" (as-ecl-recdef result-obj toplevel-name))))))
-
-(defun toplevel (argv)
-  (declare (ignore argv)) ; Arguments handled by Adopt
-  (sb-ext:disable-debugger)
-  (exit-on-ctrl-c
-    (multiple-value-bind (arguments options) (adopt:parse-options-or-exit *ui*)
-      ;; Handle options
-      (declare (ignore options))
-      (handler-case (run arguments)
-        (user-error (e) (adopt:print-error-and-exit e)))))
-  (uiop:quit))
