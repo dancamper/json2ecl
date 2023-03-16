@@ -59,7 +59,7 @@
   (exit-on-ctrl-c
     (multiple-value-bind (arguments options) (adopt:parse-options-or-exit *ui* argv)
       (cond ((gethash 'version options)
-             (format t "~A~%" (slot-value (asdf:find-system 'json2ecl) 'asdf:version))
+             (format t "~A~%" #.(slot-value (asdf:find-system 'json2ecl) 'asdf:version))
              (adopt:exit))
             ((gethash 'help options)
              (adopt:print-help-and-exit *ui*)))
