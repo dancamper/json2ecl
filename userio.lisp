@@ -62,6 +62,6 @@
              (adopt:exit))
             ((gethash 'help options)
              (adopt:print-help-and-exit *ui*)))
-      (handler-case (run arguments)
+      (handler-case (run (cdr arguments))
         (user-error (e) (adopt:print-error-and-exit e)))))
   (adopt:exit))
