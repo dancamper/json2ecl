@@ -9,6 +9,7 @@
 ;;;
 
 (defvar *layout-names* nil)
+(defvar *ecl-string-type* "UTF8")
 
 ;;;
 
@@ -75,7 +76,7 @@
     (boolean "BOOLEAN")
     (null "STRING")
     (string "STRING")
-    (utf8 "UTF8")
+    (default-string *ecl-string-type*)
     (number "INTEGER")
     (float "REAL")))
 
@@ -150,11 +151,11 @@
     ((eql null) 'null)
     (integer 'number)
     (double-float 'float)
-    (string 'utf8)))
+    (string 'default-string)))
 
 (defun common-type (new-type old-type)
   (cond ((not old-type) new-type)
-        ((or (eql old-type 'utf8) (eql new-type 'utf8)) 'utf8)
+        ((or (eql old-type 'default-string) (eql new-type 'default-string)) 'default-string)
         ((or (eql old-type 'float) (eql new-type 'float)) 'float)
         ((not (eql old-type new-type)) 'string)
         (t new-type)))

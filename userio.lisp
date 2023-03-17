@@ -20,6 +20,17 @@
                      :short #\h
                      :reduce (constantly t)))
 
+(defparameter *option-ecl-string-type*
+  (adopt:make-option 'string-type
+                     :result-key 'string-type
+                     :parameter "STRING-TYPE"
+                     :help (format nil "ECL datatype to use for strings; must be one of ~
+                                        UTF8|STRING|VARSTRING; defaults to UTF8")
+                     :long "string-type"
+                     :short #\s
+                     :initial-value "UTF8"
+                     :reduce #'adopt:last))
+
 (adopt:define-string *help-text*
   "json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to parse it. ~
 The resulting ECL definitions are returned via standard out, suitable for piping or copying ~
@@ -29,7 +40,18 @@ JSON data can be supplied as one or more files or via standard input.~@
 ~@
 Multiple files, if provided, are parsed as if they should have the same record structure. ~
 This is useful for cases where you suspect that not all JSON key/value objects are fully ~
-defined in one file, but other files may contain the missing data.")
+defined in one file, but other files may contain the missing data.~@
+~@
+The `-h` and `-v` versions should be obvious.~@
+~@
+The -s option allows you to override the ECL datatype used for string values. ~
+Because JSON data is normally in UTF-8 format, UTF8 is the default ECL data type for ~
+those values.  However, if you know that the data is in plain ASCII then you can override ~
+the type with this option.  The acceptable values are:~@
+~@
+- UTF8: A UTF-8 string; this is the default.~@
+- STRING: An ASCII string.~@
+- VARSTRING:  A C-style null-terminated string.  Don't use this unless you know why you need it.")
 
 (defparameter *ui*
   (adopt:make-interface :name "json2ecl"
@@ -39,7 +61,8 @@ defined in one file, but other files may contain the missing data.")
                         :help *help-text*
                         :contents (list
                                    *option-version*
-                                   *option-help*)))
+                                   *option-help*
+                                   *option-ecl-string-type*)))
 
 ;;;
 
@@ -58,7 +81,7 @@ defined in one file, but other files may contain the missing data.")
   `(handler-case (with-user-abort:with-user-abort (progn ,@body))
      (with-user-abort:user-abort () (adopt:exit 130))))
 
-(defun run (args)
+(defun run (args &key (string-type *ecl-string-type*))
   (let* ((argc (length args))
          (args (if (plusp argc) args (list *standard-input*))))
     ;; Verify that files exist
@@ -66,10 +89,14 @@ defined in one file, but other files may contain the missing data.")
       (loop for input in args
             do (unless (uiop:probe-file* input)
                  (error 'missing-file :path input))))
-    (let ((toplevel-name (if (= argc 1)
+    (let ((*ecl-string-type* (string-upcase string-type))
+          (toplevel-name (if (= argc 1)
                              (pathname-name (uiop:probe-file* (car args)))
                              (format nil "~A" (gensym "toplevel_"))))
           (result-obj nil))
+      ;; Make sure the string type is recognized
+      (unless (member *ecl-string-type* '("UTF8" "STRING" "VARSTRING") :test #'string=)
+        (adopt:print-error-and-exit (format nil "Unknown string type '~A'" *ecl-string-type*)))
       ;; Parse files or standard input
       (loop for input in args
             do (let ((one-item (or (uiop:probe-file* input) input)))
@@ -87,7 +114,7 @@ defined in one file, but other files may contain the missing data.")
              (adopt:exit))
             ((gethash 'help options)
              (adopt:print-help-and-exit *ui*)))
-      (handler-case (run (cdr arguments))
+      (handler-case (run (cdr arguments) :string-type (gethash 'string-type options))
         (user-error (e) (adopt:print-error-and-exit e))
         (jzon:json-error (e) (adopt:print-error-and-exit e)))))
   (adopt:exit))

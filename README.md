@@ -73,7 +73,21 @@ layout will be named TOPLEVEL with some added items to make it unique.
 Options:
   -v, --version         Display version and exit.
   -h, --help            Display help and exit.
+  -s STRING-TYPE, --string-type STRING-TYPE
+                        ECL datatype to use for strings; must be one of
+                        UTF8|STRING|VARSTRING; defaults to UTF8
 ```
+
+The `-h` and `-v` versions should be obvious.
+
+The -s option allows you to override the ECL datatype used for string values.
+Because JSON data is normally in UTF-8 format, UTF8 is the default ECL data type for
+those values.  However, if you know that the data is in plain ASCII then you can override
+the type with this option.  The acceptable values are:
+
+- **UTF8**: A UTF-8 string; this is the default.
+- **STRING**: An ASCII string.
+- **VARSTRING**:  A C-style null-terminated string.  Don't use this unless you know why you need it.
 
 ## Examples
 
@@ -102,6 +116,15 @@ END;
 $ cat foo.json | json2ecl 
 TOPLEVEL_231_001_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
+    INTEGER start {XPATH('start')};
+    REAL f_end {XPATH('end')};
+END;
+````
+
+````none
+$ json2ecl foo.json -s STRING
+FOO_001_LAYOUT := RECORD
+    STRING foo {XPATH('foo')};
     INTEGER start {XPATH('start')};
     REAL f_end {XPATH('end')};
 END;
