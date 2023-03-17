@@ -20,20 +20,37 @@
                      :short #\h
                      :reduce (constantly t)))
 
+(adopt:define-string *help-text*
+  "json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to parse it. ~
+The resulting ECL definitions are returned via standard out, suitable for piping or copying ~
+and pasting into your favorite IDE.~@
+~@
+JSON data can be supplied as one or more files or via standard input.~@
+~@
+Multiple files, if provided, are parsed as if they should have the same record structure. ~
+This is useful for cases where you suspect that not all JSON key/value objects are fully ~
+defined in one file, but other files may contain the missing data.")
+
 (defparameter *ui*
   (adopt:make-interface :name "json2ecl"
-                        :usage "[OPTIONS] FILE ..."
+                        :usage "[OPTIONS] [FILE...]"
                         :summary (format nil "analyze JSON data and emit ECL record ~
                                               definitions that can parse that data")
-                        :help (format nil "json2ecl examines JSON data and deduces ~
-                                           the ECL RECORD definitions necessary to parse it.")
+                        :help *help-text*
                         :contents (list
                                    *option-version*
                                    *option-help*)))
 
 ;;;
 
-(define-condition user-error (error) ())
+(define-condition user-error (error)
+  ())
+
+(define-condition missing-file (user-error)
+  ((path :initarg :path))
+  (:report
+   (lambda (c s)
+     (format s "missing file '~A'" (slot-value c 'path)))))
 
 ;;;
 
@@ -44,13 +61,20 @@
 (defun run (args)
   (let* ((argc (length args))
          (args (if (plusp argc) args (list *standard-input*))))
+    ;; Verify that files exist
+    (when (plusp argc)
+      (loop for input in args
+            do (unless (uiop:probe-file* input)
+                 (error 'missing-file :path input))))
     (let ((toplevel-name (if (= argc 1)
                              (pathname-name (uiop:probe-file* (car args)))
                              (format nil "~A" (gensym "toplevel_"))))
           (result-obj nil))
+      ;; Parse files or standard input
       (loop for input in args
             do (let ((one-item (or (uiop:probe-file* input) input)))
                  (setf result-obj (process-file-or-stream one-item result-obj))))
+      ;; Emit ECL record definitions
       (setf *layout-names* nil)
       (format t "~A" (as-ecl-recdef result-obj toplevel-name)))))
 

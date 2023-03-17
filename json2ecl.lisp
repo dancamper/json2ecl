@@ -76,7 +76,8 @@
     (null "STRING")
     (string "STRING")
     (utf8 "UTF8")
-    (number "INTEGER")))
+    (number "INTEGER")
+    (float "REAL")))
 
 (defun dataset-datatype-name (name)
   (format nil "DATASET(~A)" (layout-name name)))
@@ -148,12 +149,13 @@
     ((eql nil) 'boolean)
     ((eql null) 'null)
     (integer 'number)
-    (double-float 'number)
+    (double-float 'float)
     (string 'utf8)))
 
 (defun common-type (new-type old-type)
   (cond ((not old-type) new-type)
         ((or (eql old-type 'utf8) (eql new-type 'utf8)) 'utf8)
+        ((or (eql old-type 'float) (eql new-type 'float)) 'float)
         ((not (eql old-type new-type)) 'string)
         (t new-type)))
 
