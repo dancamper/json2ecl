@@ -10,6 +10,14 @@ Multiple files, if provided, are parsed as if they should have the same record s
 This is useful for cases where you suspect that not all JSON key/value objects are fully
 defined in one file, but other files may contain the missing data.
 
+## ECL Record Definitions ???
+
+[HPCC Systems](https://hpccsystems.com) is a big data system that is programmed using a
+declarative language called Enterprise Control language (ECL).  It is a schema-on-read
+system, meaning that you supply a schema to the function that reads data for processing.
+An "ECL record definition" in this context means that schema:  json2ecl generates the
+schema as text that can be pasted into an IDE and used within an ECL program.
+
 ## Requirements
 
 This project was written using SBCL and it has not been tested with other flavors
@@ -46,7 +54,22 @@ structure. This is useful for cases where you suspect that not all JSON
 key/value objects are fully defined in one file, but other files may contain the
 missing data.
 
-```
+ECL records will be created with fields named after the keys found in JSON objects.
+Every field will have an XPATH attribute added so the ECL reader can correctly
+read everything, no matter what the field is named.
+
+ECL keywords, in general, should not be used as field names in record definitions.
+json2ecl will prefix those fields with "f_" when defining those field names.  Other
+minor changes to the field names are also made (such as converting dashes to
+underscores).
+
+The last ECL record definition in the output will be the "root" definition; it
+is the one you should pass to the ECL DATASET() function.  If you pass exactly
+one file to json2ecl then that record definition will be named after the file.
+If you pass multiple files, or stream JSON data in via standard input, then the
+layout will be named TOPLEVEL with some added items to make it unique.
+
+```none
 Options:
   -v, --version         Display version and exit.
   -h, --help            Display help and exit.
@@ -54,7 +77,7 @@ Options:
 
 ## Examples
 
-Assuming file foo.json contains the following contents:
+Assuming file foo.json contains the following contents (and note that the third key in the object is an ECL reserved keyword, which affects the result):
 
 ```json
 {
@@ -66,7 +89,7 @@ Assuming file foo.json contains the following contents:
 
 Simple parsing of those contents:
 
-````
+````none
 $ json2ecl foo.json
 FOO_001_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
@@ -75,7 +98,7 @@ FOO_001_LAYOUT := RECORD
 END;
 ````
 
-````
+````none
 $ cat foo.json | json2ecl 
 TOPLEVEL_231_001_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
