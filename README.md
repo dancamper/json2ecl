@@ -82,7 +82,7 @@ Options:
                         UTF8|STRING|VARSTRING; defaults to UTF8
 ```
 
-The `-h` and `-v` versions should be obvious.
+The `-h` and `-v` options should be obvious.
 
 The -s option allows you to override the ECL datatype used for string values.
 Because JSON data is normally in UTF-8 format, `UTF8` is the default ECL data type for
@@ -130,7 +130,7 @@ TOPLEVEL_231_001_LAYOUT := RECORD
 END;
 ````
 
-Simple examle of overriding the default string ECL data type:
+Simple example of overriding the default string ECL data type:
 
 ````none
 $ json2ecl -s STRING foo.json
