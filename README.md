@@ -28,6 +28,10 @@ The following dependencies are required:
 
 - ASDF (version 3.3.6 or later)
 - Quicklisp
+  - Packages automatically loaded via Quicklisp
+    - adopt
+    - com.inuoe.jzon
+    - with-user-abort
 - Buildapp
   - Used to build the binary
   - [https://www.xach.com/lisp/buildapp/](https://www.xach.com/lisp/buildapp/)
@@ -36,8 +40,8 @@ The following dependencies are required:
 
 1. Clone this repo:  `git clone https://github.com/dancamper/json2ecl.git`
 1. Change directory: `cd json2ecl`
-1. Run build script: ./build_binary.sh
-1. Final binary is now bin/json2ecl.  You can move or copy that binary to a location on your path.
+1. Run build script: `./build_binary.sh`
+1. Final binary is now `bin/json2ecl`.  You can move or copy that binary to a location on your path.
 
 ## How to Use
 
@@ -81,17 +85,17 @@ Options:
 The `-h` and `-v` versions should be obvious.
 
 The -s option allows you to override the ECL datatype used for string values.
-Because JSON data is normally in UTF-8 format, UTF8 is the default ECL data type for
+Because JSON data is normally in UTF-8 format, `UTF8` is the default ECL data type for
 those values.  However, if you know that the data is in plain ASCII then you can override
 the type with this option.  The acceptable values are:
 
-- **UTF8**: A UTF-8 string; this is the default.
-- **STRING**: An ASCII string.
-- **VARSTRING**:  A C-style null-terminated string.  Don't use this unless you know why you need it.
+- `UTF8`: A UTF-8 string; this is the default.
+- `STRING`: An ASCII string.
+- `VARSTRING`:  A C-style null-terminated string.  Don't use this unless you know why you need it.
 
 ## Examples
 
-Assuming file foo.json contains the following contents (and note that the third key in the object is an ECL reserved keyword, which affects the result):
+Assuming file foo.json contains the following contents:
 
 ```json
 {
@@ -101,7 +105,8 @@ Assuming file foo.json contains the following contents (and note that the third 
 }
 ```
 
-Simple parsing of those contents:
+Simple parsing of those contents.  The `end` JSON key is an ECL keyword, so it
+was modified with the `f_` prefix.
 
 ````none
 $ json2ecl foo.json
@@ -112,6 +117,10 @@ FOO_001_LAYOUT := RECORD
 END;
 ````
 
+You can pipe JSON content instead of reading a file.  Note that generally you cannot
+pipe multiple JSON files, because the final result will not be valid JSON (there will
+be no separator characters between the files' contents, for instance).
+
 ````none
 $ cat foo.json | json2ecl 
 TOPLEVEL_231_001_LAYOUT := RECORD
@@ -121,15 +130,13 @@ TOPLEVEL_231_001_LAYOUT := RECORD
 END;
 ````
 
+Simple examle of overriding the default string ECL data type:
+
 ````none
-$ json2ecl foo.json -s STRING
+$ json2ecl -s STRING foo.json
 FOO_001_LAYOUT := RECORD
     STRING foo {XPATH('foo')};
     INTEGER start {XPATH('start')};
     REAL f_end {XPATH('end')};
 END;
 ````
-
-## License
-
-Apache 2.0
