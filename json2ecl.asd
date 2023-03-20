@@ -10,7 +10,7 @@
   :description "Examines JSON data and deduces the ECL RECORD definitions necessary to parse it."
   :author "Dan S. Camper"
   :license  "Apache 2.0"
-  :version "0.0.7"
+  :version "0.0.8"
   :serial t
   :depends-on (#:adopt #:com.inuoe.jzon #:with-user-abort)
   :components ((:file "package")

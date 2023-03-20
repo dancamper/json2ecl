@@ -82,6 +82,7 @@ the type with this option.  The acceptable values are:~@
      (with-user-abort:user-abort () (adopt:exit 130))))
 
 (defun run (args &key (string-type *ecl-string-type*))
+  "Dev-level entry point."
   (let* ((argc (length args))
          (args (if (plusp argc) args (list *standard-input*))))
     ;; Verify that files exist
@@ -103,9 +104,10 @@ the type with this option.  The acceptable values are:~@
                  (setf result-obj (process-file-or-stream one-item result-obj))))
       ;; Emit ECL record definitions
       (setf *layout-names* nil)
-      (format t "~A" (as-ecl-recdef result-obj toplevel-name)))))
+      (format t "~A" (as-ecl-record-def result-obj toplevel-name)))))
 
 (defun toplevel (argv)
+  "CLI-level entry point."
   (sb-ext:disable-debugger)
   (exit-on-ctrl-c
     (multiple-value-bind (arguments options) (adopt:parse-options-or-exit *ui* argv)
