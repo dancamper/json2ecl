@@ -33,8 +33,11 @@ with an option.")
   (member name *ecl-keywords* :test 'equalp))
 
 (defun remove-illegal-chars (name)
-  "Return a copy of NAME with characters illegal for ECL attribute names removed."
-  (substitute-if #\_ (lambda (c) (member c '(#\-))) name))
+  "Return a copy of NAME with characters illegal for ECL attribute names
+substituted with an underscore."
+  (substitute-if #\_ (lambda (c) (not (or (alphanumericp c)
+                                          (member c '(#\_)))))
+                 name))
 
 ;;;
 
@@ -56,7 +59,7 @@ with an option.")
   "Construct a string that is a suitable ECL RECORD attribute, based on NAME."
   (let* ((legal-name (legal-layout-subname name))
          (name-count (count-if #'(lambda (x) (equalp x legal-name)) *layout-names*))
-         (interstitial (if (zerop name-count) "" (format nil "_~3,'0D" name-count))))
+         (interstitial (if (< name-count 2) "" (format nil "_~3,'0D" name-count))))
     (format nil "~A~A_LAYOUT" legal-name interstitial)))
 
 (defun register-layout-subname (name)
@@ -154,7 +157,7 @@ new instance of CLASSNAME in place and return that."
 then kick off a new depth of parsing with the result."
   `(progn
      (reuse-object ,place ,classname)
-     (parse-obj ,place ,parser)))
+     (parse-obj ,place ,parser nil)))
 
 ;;;
 
@@ -183,24 +186,28 @@ then kick off a new depth of parsing with the result."
 
 ;;;
 
-(defgeneric parse-obj (obj parser &key is-toplevel-p)
+(defgeneric parse-obj (obj parser is-toplevel-p)
   (:documentation "Parses JZON-provided tokens into an internal object representation."))
 
-(defmethod parse-obj ((obj array-item) parser &key (is-toplevel-p nil))
+(defmethod parse-obj ((obj t) parser (is-toplevel-p (eql t)))
   (loop named parse
         do (multiple-value-bind (event value) (jzon:parse-next parser)
-             (cond (is-toplevel-p
-                    (cond ((null event)
-                           (return-from parse))
-                          ((eql event :begin-array)
-                           (reuse-object obj 'array-item)
-                           (parse-obj obj parser))
-                          ((eql event :begin-object)
-                           (reuse-object obj 'object-item)
-                           (parse-obj obj parser))
-                          (t
-                           (error "Unknown object at toplevel: (~A,~A)" event value))))
-                   ((null event)
+             (cond ((null event)
+                    (return-from parse))
+                   ((eql event :begin-array)
+                    (reuse-object obj 'array-item)
+                    (parse-obj obj parser nil))
+                   ((eql event :begin-object)
+                    (reuse-object obj 'object-item)
+                    (parse-obj obj parser nil))
+                   (t
+                    (error "Unknown object at toplevel: (~A,~A)" event value)))))
+  obj)
+
+(defmethod parse-obj ((obj array-item) parser (is-toplevel-p (eql nil)))
+  (loop named parse
+        do (multiple-value-bind (event value) (jzon:parse-next parser)
+             (cond ((null event)
                     (error "Unexpected end of file"))
                    ((eql event :end-array)
                     (return-from parse))
@@ -214,21 +221,10 @@ then kick off a new depth of parsing with the result."
                     (error "Unknown object while parsing array: (~A,~A)" event value)))))
   obj)
 
-(defmethod parse-obj ((obj object-item) parser &key (is-toplevel-p nil))
+(defmethod parse-obj ((obj object-item) parser (is-toplevel-p (eql nil)))
   (loop named parse
         do (multiple-value-bind (event value) (jzon:parse-next parser)
-             (cond (is-toplevel-p
-                    (cond ((null event)
-                           (return-from parse))
-                          ((eql event :begin-array)
-                           (reuse-object obj 'array-item)
-                           (parse-obj obj parser))
-                          ((eql event :begin-object)
-                           (reuse-object obj 'object-item)
-                           (parse-obj obj parser))
-                          (t
-                           (error "Unknown object at toplevel: (~A,~A)" event value))))
-                   ((null event)
+             (cond ((null event)
                     (error "Unexpected end of file"))
                    ((eql event :end-object)
                     (return-from parse))
@@ -247,29 +243,12 @@ then kick off a new depth of parsing with the result."
                     (error "Unknown object while parsing object: (~A,~A)" event value)))))
   obj)
 
-(defmethod parse-obj ((obj t) parser &key (is-toplevel-p nil))
-  (declare (ignore obj is-toplevel-p))
-  (let ((top-object nil))
-    (loop named parse
-          do (multiple-value-bind (event value) (jzon:parse-next parser)
-               (cond ((null event)
-                      (return-from parse))
-                     ((eql event :begin-array)
-                      (reuse-object top-object 'array-item)
-                      (parse-obj top-object parser))
-                     ((eql event :begin-object)
-                      (reuse-object top-object 'object-item)
-                      (parse-obj top-object parser))
-                     (t
-                      (error "Unknown object at toplevel: (~A,~A)" event value)))))
-    top-object))
-
 ;;;
 
 (defun process-file-or-stream (input parsed-obj)
   "Entry point for parsing a single JSON data blob; INPUT can be a pathname
 or a file stream; PARSED-OBJ should be a toplevel object."
   (jzon:with-parser (parser input)
-    (setf parsed-obj (parse-obj parsed-obj parser :is-toplevel-p t)))
+    (setf parsed-obj (parse-obj parsed-obj parser t)))
   parsed-obj)
 

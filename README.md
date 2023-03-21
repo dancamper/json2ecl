@@ -91,7 +91,7 @@ the type with this option.  The acceptable values are:
 
 - `UTF8`: A UTF-8 string; this is the default.
 - `STRING`: An ASCII string.
-- `VARSTRING`:  A C-style null-terminated string.  Don't use this unless you know why you need it.
+- `VARSTRING`:  A C-style null-terminated ASCII string.  Don't use this unless you know why you need it.
 
 ## Examples
 
@@ -110,7 +110,7 @@ was modified with the `f_` prefix.
 
 ````none
 $ json2ecl foo.json
-FOO_001_LAYOUT := RECORD
+FOO_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
     INTEGER start {XPATH('start')};
     REAL f_end {XPATH('end')};
@@ -123,7 +123,7 @@ be no separator characters between the files' contents, for instance).
 
 ````none
 $ cat foo.json | json2ecl 
-TOPLEVEL_231_001_LAYOUT := RECORD
+TOPLEVEL_231_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
     INTEGER start {XPATH('start')};
     REAL f_end {XPATH('end')};
@@ -134,7 +134,7 @@ Simple example of overriding the default string ECL data type:
 
 ````none
 $ json2ecl -s STRING foo.json
-FOO_001_LAYOUT := RECORD
+FOO_LAYOUT := RECORD
     STRING foo {XPATH('foo')};
     INTEGER start {XPATH('start')};
     REAL f_end {XPATH('end')};
