@@ -141,7 +141,7 @@ substituted with an underscore."
   "Return object found in PLACE if it is an instance of CLASSNAME, or create a
 new instance of CLASSNAME in place and return that."
   `(progn
-     (cond ((or (null ,place) (eql ,place 'null))
+     (cond ((or (null ,place) (eql ,place 'null-value))
             (setf ,place (make-instance ,classname)))
            ((not (typep ,place ,classname))
             (error "Mismatching object types")))
@@ -149,7 +149,7 @@ new instance of CLASSNAME in place and return that."
 
 (defmacro parse-simple (place value)
   "Insert the base type of VALUE into PLACE."
-  `(unless (eql (base-type ,value) 'null)
+  `(unless (eql (base-type ,value) 'null-value)
      (setf ,place (common-type (base-type ,value) ,place))))
 
 (defmacro parse-complex (place classname parser)
