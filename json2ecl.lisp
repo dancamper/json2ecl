@@ -79,7 +79,7 @@ substituted with an underscore."
   "Given a symbol representing an internal data type, return the corresponding ECL data type."
   (case value-type
     (boolean "BOOLEAN")
-    (null "STRING")
+    (null-value "STRING")
     (string "STRING")
     (default-string *ecl-string-type*)
     (number "INTEGER")
@@ -166,7 +166,7 @@ then kick off a new depth of parsing with the result."
   (etypecase jzon-atom
     ((eql t) 'boolean)
     ((eql nil) 'boolean)
-    ((eql null) 'null)
+    ((eql null) 'null-value)
     (integer 'number)
     (double-float 'float)
     (string 'default-string)))
@@ -175,14 +175,17 @@ then kick off a new depth of parsing with the result."
   "Given two internal symbols, return an internal type that can encompass both."
   (cond ((not old-type)
          new-type)
+        ((eql new-type old-type)
+         new-type)
         ((or (eql old-type 'default-string) (eql new-type 'default-string))
          'default-string)
-        ((or (eql old-type 'float) (eql new-type 'float))
-         'float)
-        ((not (eql old-type new-type))
+        ((or (eql old-type 'string) (eql new-type 'string))
          'string)
+        ((or (and (eql new-type 'number) (eql old-type 'float))
+             (and (eql new-type 'float) (eql old-type 'number)))
+         'float)
         (t
-         new-type)))
+         'string)))
 
 ;;;
 
