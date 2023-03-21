@@ -148,8 +148,8 @@ new instance of CLASSNAME in place and return that."
      ,place))
 
 (defmacro parse-simple (place value)
-  "Insert the base type of VALUE into PLACE."
-  `(unless (eql (base-type ,value) 'null-value)
+  "Insert the common type of VALUE and PLACE into PLACE."
+  `(unless (or (typep ,place 'array-item) (typep ,place 'object-item))
      (setf ,place (common-type (base-type ,value) ,place))))
 
 (defmacro parse-complex (place classname parser)
