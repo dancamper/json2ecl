@@ -4,6 +4,9 @@ json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to 
 The resulting ECL definitions are returned via standard out, suitable for piping or copying
 and pasting into your favorite IDE.
 
+JSON data types are mapped to their equivalent ECL data types.  In the event that the
+same JSON key references multiple types (the most common being a field that is occassionally null), json2ecl will choose an ECL data type that can read both.
+
 JSON data can be supplied as one or more files or via standard input.
 
 Multiple files, if provided, are parsed as if they should have the same record structure.
@@ -108,7 +111,7 @@ Assuming file foo.json contains the following contents:
 Simple parsing of those contents.  The `end` JSON key is an ECL keyword, so it
 was modified with the `f_` prefix.
 
-````none
+```none
 $ json2ecl foo.json
 FOO_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
@@ -121,7 +124,7 @@ You can pipe JSON content instead of reading a file.  Note that generally you ca
 pipe multiple JSON files, because the final result will not be valid JSON (there will
 be no separator characters between the files' contents, for instance).
 
-````none
+```none
 $ cat foo.json | json2ecl 
 TOPLEVEL_231_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
@@ -132,7 +135,7 @@ END;
 
 Simple example of overriding the default string ECL data type:
 
-````none
+```none
 $ json2ecl -s STRING foo.json
 FOO_LAYOUT := RECORD
     STRING foo {XPATH('foo')};
@@ -140,3 +143,33 @@ FOO_LAYOUT := RECORD
     REAL f_end {XPATH('end')};
 END;
 ````
+
+If you process multiple JSON files at once, json2ecl assumes that each file represents
+a separate example of the same underlying structure.  This is useful, as variations in
+JSON field values -- explicit null values, or outright missing fields -- could be
+discovered and "filled in" by these additional data files.
+
+Assuming a second file baz.json with the following contents:
+
+```json
+{
+  "foo": "frob",
+  "start": 42,
+  "end": null,
+  "incr": 3.5
+}
+```
+
+Notice that the `end` field contains a null instead of a float, and there is an
+additional field named `incr` in the object.  The two layouts from the two files
+were merged:
+
+```none
+$ json2ecl foo.json baz.json 
+TOPLEVEL_139_LAYOUT := RECORD
+    UTF8 foo {XPATH('foo')};
+    INTEGER start {XPATH('start')};
+    STRING f_end {XPATH('end')};
+    REAL incr {XPATH('incr')};
+END;
+```
