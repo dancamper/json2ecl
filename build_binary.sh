@@ -11,9 +11,11 @@ set -euo pipefail
 mkdir -p bin
 
 buildapp --output bin/json2ecl \
-         --eval "(load \"~/quicklisp/setup.lisp\")" \
+         --eval "(let ((quicklisp-init (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))) (when (probe-file quicklisp-init) (load quicklisp-init)))" \
+         --eval "(require :asdf)" \
          --eval "(ql:quickload '(:adopt :com.inuoe.jzon :with-user-abort) :silent t)" \
          --asdf-path ~/quicklisp/dists \
+         --asdf-path . \
          --load-system json2ecl \
          --entry json2ecl:toplevel \
          --compress-core
