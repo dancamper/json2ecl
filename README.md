@@ -31,7 +31,9 @@ The following dependencies are required:
 
 - ASDF (version 3.3.6 or later)
 - Packages installed via QuickLisp
-  - `(ql:quickload '(:adopt :com.inuoe.jzon :with-user-abort))`
+  - adopt
+  - com.inuoe.jzon
+  - with-user-abort
 - Buildapp
   - Used to build the binary
   - [https://www.xach.com/lisp/buildapp/](https://www.xach.com/lisp/buildapp/)
