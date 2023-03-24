@@ -30,10 +30,11 @@ with all of the common Lisp distributions.
 The following dependencies are required:
 
 - ASDF (version 3.3.6 or later)
+- Quicklisp
 - Packages installed via QuickLisp
-  - adopt
-  - com.inuoe.jzon
-  - with-user-abort
+  - :adopt
+  - :com.inuoe.jzon
+  - :with-user-abort
 - Buildapp
   - Used to build the binary
   - [https://www.xach.com/lisp/buildapp/](https://www.xach.com/lisp/buildapp/)
