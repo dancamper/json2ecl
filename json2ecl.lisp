@@ -77,13 +77,27 @@ substituted with an underscore."
 
 (defun as-ecl-type (value-type)
   "Given a symbol representing an internal data type, return the corresponding ECL data type."
-  (case value-type
-    (boolean "BOOLEAN")
-    (null-value "STRING")
-    (string "STRING")
-    (default-string *ecl-string-type*)
-    (number "INTEGER")
-    (float "REAL")))
+  (if (consp value-type)
+      (as-ecl-type (reduce-base-type value-type))
+      (case value-type
+        (boolean "BOOLEAN")
+        (null-value "STRING")
+        (string "STRING")
+        (default-string *ecl-string-type*)
+        (number "INTEGER")
+        (float "REAL"))))
+
+(defun as-value-comment (value-type)
+  "If VALUE-TYPE is a list of more than one base type, return a string that serves
+as an ECL comment describing those types."
+  (when (and (consp value-type) (> (length value-type) 1))
+    (labels ((desc (v)
+               (case v
+                 (null-value "null")
+                 (default-string "string")
+                 (number "integer")
+                 (t (format nil "~(~A~)" v)))))
+      (format nil "// ~{~A~^, ~}" (mapcar #'desc value-type)))))
 
 ;;;
 
@@ -91,18 +105,23 @@ substituted with an underscore."
   (:documentation "Create an ECL field definition from an object or array class."))
 
 (defmethod as-ecl-field-def ((value-obj t) name)
-  (let ((ecl-type (as-ecl-type value-obj)))
-    (format nil "~4T~A ~A ~A;~%" ecl-type (as-ecl-field-name name) (as-ecl-xpath name))))
+  (let* ((ecl-type (as-ecl-type value-obj))
+         (comment (as-value-comment value-obj))
+         (prefix (format nil "~4T~A ~A ~A;" ecl-type (as-ecl-field-name name) (as-ecl-xpath name))))
+    (when comment
+      (setf prefix (format nil "~A ~A" prefix comment)))
+    (format nil "~A~%" prefix)))
 
 (defmethod as-ecl-field-def ((obj object-item) name)
   (format nil "~4T~A ~A ~A;~%" (as-dataset-type name) (as-ecl-field-name name) (as-ecl-xpath name)))
 
 (defmethod as-ecl-field-def ((obj array-item) name)
   (if (element-type obj)
-      (format nil "~4TSET OF ~A ~A ~A;~%"
-              (as-ecl-type (element-type obj))
-              (as-ecl-field-name name)
-              (as-ecl-xpath name))
+      (let ((common (reduce-base-type (element-type obj))))
+        (format nil "~4TSET OF ~A ~A ~A;~%"
+                (as-ecl-type common)
+                (as-ecl-field-name name)
+                (as-ecl-xpath name)))
       (format nil "~4T~A ~A ~A;~%"
               (as-dataset-type name)
               (as-ecl-field-name name)
@@ -143,14 +162,21 @@ new instance of CLASSNAME in place and return that."
   `(progn
      (cond ((or (null ,place) (eql ,place 'null-value))
             (setf ,place (make-instance ,classname)))
+           ((and (consp ,place) (eql (car ,place) 'null-value))
+            (setf ,place (make-instance ,classname)))
            ((not (typep ,place ,classname))
             (error "Mismatching object types")))
      ,place))
 
+;; (defmacro parse-simple (place value)
+;;   "Insert the common type of VALUE and PLACE into PLACE."
+;;   `(unless (or (typep ,place 'array-item) (typep ,place 'object-item))
+;;      (setf ,place (common-type (base-type ,value) ,place))))
+
 (defmacro parse-simple (place value)
-  "Insert the common type of VALUE and PLACE into PLACE."
+  "Pushes the base type of VALUE onto the sequence PLACE."
   `(unless (or (typep ,place 'array-item) (typep ,place 'object-item))
-     (setf ,place (common-type (base-type ,value) ,place))))
+     (pushnew (base-type ,value) ,place)))
 
 (defmacro parse-complex (place classname parser)
   "Reuse object in PLACE if possible, or create a new instance of CLASSNAME,
@@ -186,6 +212,9 @@ then kick off a new depth of parsing with the result."
          'float)
         (t
          'string)))
+
+(defun reduce-base-type (types)
+  (reduce #'common-type types))
 
 ;;;
 
