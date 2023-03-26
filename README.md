@@ -5,7 +5,9 @@ The resulting ECL definitions are returned via standard out, suitable for piping
 and pasting into your favorite IDE.
 
 JSON data types are mapped to their equivalent ECL data types.  In the event that the
-same JSON key references multiple types (the most common being a field that is occassionally null), json2ecl will choose an ECL data type that can read both.
+same JSON key references multiple types (the most common being a field that is occassionally null), json2ecl will choose an ECL data type that can read both.  If this happens
+then a comment will be added after the field declaration indicating which base data types
+were found, so you have an idea of how to handle that field when processing the file.
 
 JSON data can be supplied as one or more files or via standard input.
 
@@ -169,7 +171,7 @@ $ json2ecl foo.json baz.json
 TOPLEVEL_139_LAYOUT := RECORD
     UTF8 foo {XPATH('foo')};
     INTEGER start {XPATH('start')};
-    STRING f_end {XPATH('end')};
+    STRING f_end {XPATH('end')}; // null, float
     REAL incr {XPATH('incr')};
 END;
 ```
