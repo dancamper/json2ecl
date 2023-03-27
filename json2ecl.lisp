@@ -35,9 +35,18 @@ with an option.")
 (defun remove-illegal-chars (name)
   "Return a copy of NAME with characters illegal for ECL attribute names
 substituted with an underscore."
-  (substitute-if #\_ (lambda (c) (not (or (alphanumericp c)
-                                          (member c '(#\_)))))
-                 name))
+  (let* ((initial (substitute-if #\_
+                                 (lambda (c) (not (or (alphanumericp c)
+                                                      (member c '(#\_)))))
+                                 name))
+         (skip nil)
+         (result (with-output-to-string (s)
+                   (loop for c across initial
+                         do (progn
+                              (unless (and (eql c #\_) skip)
+                                (format s "~A" c))
+                              (setf skip (eql c #\_)))))))
+    result))
 
 ;;;
 
@@ -53,7 +62,10 @@ substituted with an underscore."
 
 (defun legal-layout-subname (name)
   "Return a copy of NAME that can be used within a RECORD name."
-  (string-upcase (remove-illegal-chars name)))
+  (let ((initial (string-upcase (remove-illegal-chars name))))
+    (if (not (alpha-char-p (elt initial 0)))
+        (format nil "F_~A" initial)
+        initial)))
 
 (defun as-layout-name (name)
   "Construct a string that is a suitable ECL RECORD attribute, based on NAME."
