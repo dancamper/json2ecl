@@ -91,7 +91,10 @@ substituted with an underscore."
 (defun as-value-comment (value-type)
   "If VALUE-TYPE is a list of more than one base type, return a string that serves
 as an ECL comment describing those types."
-  (when (and (consp value-type) (> (length value-type) 1))
+  (when (and (consp value-type)
+             (or (and (= (length value-type) 1)
+                      (eql (car value-type) 'null-value))
+                 (> (length value-type) 1)))
     (labels ((desc (v)
                (case v
                  (null-value "null")
