@@ -183,7 +183,9 @@ new instance of CLASSNAME in place and return that."
            ((and (consp ,place) (eql (car ,place) 'null-value))
             (setf ,place (make-instance ,classname)))
            ((not (typep ,place ,classname))
-            (error "Mismatching object types")))
+            (error "json2ecl: Mismatching object types; expected ~A but found ~A"
+                   (type-of ,place)
+                   ,classname)))
      ,place))
 
 ;; (defmacro parse-simple (place value)
@@ -257,14 +259,14 @@ then kick off a new depth of parsing with the result."
                     (reuse-object obj 'object-item)
                     (parse-obj obj parser nil))
                    (t
-                    (error "Unknown object at toplevel: (~A,~A)" event value)))))
+                    (error "json2ecl: Unknown object at toplevel: (~A,~A)" event value)))))
   obj)
 
 (defmethod parse-obj ((obj array-item) parser (is-toplevel-p (eql nil)))
   (loop named parse
         do (multiple-value-bind (event value) (jzon:parse-next parser)
              (cond ((null event)
-                    (error "Unexpected end of file"))
+                    (error "json2ecl: Unexpected end of file"))
                    ((eql event :end-array)
                     (when (and (null (object-prototype obj))
                                (null (element-type obj)))
@@ -278,14 +280,14 @@ then kick off a new depth of parsing with the result."
                    ((eql event :begin-object)
                     (parse-complex (object-prototype obj) 'object-item parser))
                    (t
-                    (error "Unknown object while parsing array: (~A,~A)" event value)))))
+                    (error "json2ecl: Unknown object while parsing array: (~A,~A)" event value)))))
   obj)
 
 (defmethod parse-obj ((obj object-item) parser (is-toplevel-p (eql nil)))
   (loop named parse
         do (multiple-value-bind (event value) (jzon:parse-next parser)
              (cond ((null event)
-                    (error "Unexpected end of file"))
+                    (error "json2ecl: Unexpected end of file"))
                    ((eql event :end-object)
                     (return-from parse))
                    ((eql event :object-key)
@@ -298,9 +300,9 @@ then kick off a new depth of parsing with the result."
                         ((:begin-object)
                          (parse-complex (gethash value (keys obj)) 'object-item parser))
                         (otherwise
-                         (error "Unknown object while parsing object value: (~A,~A)" key-event key-value)))))
+                         (error "json2ecl: Unknown object while parsing object value: (~A,~A)" key-event key-value)))))
                    (t
-                    (error "Unknown object while parsing object: (~A,~A)" event value)))))
+                    (error "json2ecl: Unknown object while parsing object: (~A,~A)" event value)))))
   obj)
 
 ;;;
@@ -309,6 +311,9 @@ then kick off a new depth of parsing with the result."
   "Entry point for parsing a single JSON data blob; INPUT can be a pathname
 or a file stream; PARSED-OBJ should be a toplevel object."
   (jzon:with-parser (parser input)
-    (setf parsed-obj (parse-obj parsed-obj parser t)))
+    (handler-case (setf parsed-obj (parse-obj parsed-obj parser t))
+      (error (e) (jzon::%raise 'jzon:json-parse-error
+                               (slot-value parser 'jzon::%pos)
+                               (format nil "~A" e)))))
   parsed-obj)
 
