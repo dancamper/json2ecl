@@ -32,14 +32,15 @@ with an option.")
   "Test if NAME (which should be a lowercase string) is an ECL keyword."
   (member name *ecl-keywords* :test 'equalp))
 
-(defun remove-illegal-chars (name &key (replacement-char #\_))
+(defun remove-illegal-chars (name &key (replacement-char #\_) (keep-char-list '()))
   "Return a copy of NAME with characters illegal for ECL attribute names
 substituted with a replacment character, then reducing runs of those
 replacement characters down to a single occurrence."
-  (let* ((initial (substitute-if replacement-char
-                                 (lambda (c) (not (or (alphanumericp c)
-                                                      (eql c replacement-char))))
-                                 name))
+  (let* ((keep-chars (reduce 'cons keep-char-list :initial-value (list #\_ replacement-char) :from-end t))
+         (initial (substitute-if replacement-char
+                                    (lambda (c) (not (or (alphanumericp c)
+                                                         (member c keep-chars))))
+                                    name))
          (skip nil)
          (result (with-output-to-string (s)
                    (loop for c across initial
@@ -51,13 +52,19 @@ replacement characters down to a single occurrence."
 
 ;;;
 
+(defun apply-prefix (name prefix-char)
+  (format nil "~A~A~A"
+          prefix-char
+          (if (char= (elt name 0) #\_) "" "_")
+          name))
+
 (defun as-ecl-field-name (name)
   "Return a copy of NAME that is suitable to be used as an ECL attribute."
   (let* ((lowername (string-downcase name))
          (no-dashes (remove-illegal-chars lowername))
          (legal (if (or (not (alpha-char-p (elt no-dashes 0)))
                         (is-ecl-keyword-p no-dashes))
-                    (format nil "f_~A" no-dashes)
+                    (apply-prefix no-dashes "f")
                     no-dashes)))
     legal))
 
@@ -65,7 +72,7 @@ replacement characters down to a single occurrence."
   "Return a copy of NAME that can be used within a RECORD name."
   (let ((initial (string-upcase (remove-illegal-chars name))))
     (if (not (alpha-char-p (elt initial 0)))
-        (format nil "F_~A" initial)
+        (apply-prefix initial "F")
         initial)))
 
 (defun as-layout-name (name)
@@ -82,7 +89,9 @@ replacement characters down to a single occurrence."
 
 (defun as-ecl-xpath (name)
   "Construct an ECL XPATH directive for NAME (typically an as-is JSON key)."
-  (format nil "{XPATH('~A')}" (remove-illegal-chars name :replacement-char #\*)))
+  (let ((cleaned-name (remove-illegal-chars name :replacement-char #\* :keep-char-list '(#\-))))
+    (unless (equalp cleaned-name (as-ecl-field-name name))
+      (format nil "{XPATH('~A')}" cleaned-name))))
 
 (defun as-dataset-type (name)
   "Construct an ECL DATASET datatype, given NAME."
@@ -125,26 +134,39 @@ as an ECL comment describing those types."
 
 (defmethod as-ecl-field-def ((value-obj t) name)
   (let* ((ecl-type (as-ecl-type value-obj))
+         (xpath (as-ecl-xpath name))
          (comment (as-value-comment value-obj))
-         (prefix (format nil "~4T~A ~A ~A;" ecl-type (as-ecl-field-name name) (as-ecl-xpath name))))
-    (when comment
-      (setf prefix (format nil "~A ~A" prefix comment)))
-    (format nil "~A~%" prefix)))
+         (field-def (with-output-to-string (s)
+                      (format s "~4T~A ~A" ecl-type (as-ecl-field-name name))
+                      (when xpath
+                        (format s " ~A" xpath))
+                      (format s ";")
+                      (when comment
+                        (format s " ~A" comment))
+                      (format s "~%"))))
+    field-def))
 
 (defmethod as-ecl-field-def ((obj object-item) name)
-  (format nil "~4T~A ~A ~A;~%" (as-dataset-type name) (as-ecl-field-name name) (as-ecl-xpath name)))
+  (let* ((xpath (as-ecl-xpath name))
+         (field-def (with-output-to-string (s)
+                      (format s "~4T~A ~A" (as-dataset-type name) (as-ecl-field-name name))
+                      (when xpath
+                        (format s " ~A" xpath))
+                      (format s ";~%"))))
+    field-def))
 
 (defmethod as-ecl-field-def ((obj array-item) name)
-  (if (element-type obj)
-      (let ((common (reduce-base-type (element-type obj))))
-        (format nil "~4TSET OF ~A ~A ~A;~%"
-                (as-ecl-type common)
-                (as-ecl-field-name name)
-                (as-ecl-xpath name)))
-      (format nil "~4T~A ~A ~A;~%"
-              (as-dataset-type name)
-              (as-ecl-field-name name)
-              (as-ecl-xpath name))))
+  (let* ((field-name (as-ecl-field-name name))
+         (xpath (as-ecl-xpath name))
+         (field-def (with-output-to-string (s)
+                      (if (element-type obj)
+                          (format s "~4TSET OF ~A" (as-ecl-type (reduce-base-type (element-type obj))))
+                          (format s "~4T~A" (as-dataset-type name)))
+                      (format s " ~A" field-name)
+                      (when xpath
+                        (format s " ~A" xpath))
+                      (format s ";~%"))))
+    field-def))
 
 (defgeneric as-ecl-record-def (obj name)
   (:documentation "Create an ECL RECORD definition from an object or array class."))
