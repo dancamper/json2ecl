@@ -266,6 +266,10 @@ then kick off a new depth of parsing with the result."
              (cond ((null event)
                     (error "Unexpected end of file"))
                    ((eql event :end-array)
+                    (when (and (null (object-prototype obj))
+                               (null (element-type obj)))
+                                        ; absent any type info, we will call this an array of nulls
+                      (pushnew 'null-value (element-type obj)))
                     (return-from parse))
                    ((eql event :value)
                     (parse-simple (element-type obj) value))
