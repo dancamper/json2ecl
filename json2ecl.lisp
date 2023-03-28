@@ -32,20 +32,21 @@ with an option.")
   "Test if NAME (which should be a lowercase string) is an ECL keyword."
   (member name *ecl-keywords* :test 'equalp))
 
-(defun remove-illegal-chars (name)
+(defun remove-illegal-chars (name &key (replacement-char #\_))
   "Return a copy of NAME with characters illegal for ECL attribute names
-substituted with an underscore."
-  (let* ((initial (substitute-if #\_
+substituted with a replacment character, then reducing runs of those
+replacement characters down to a single occurrence."
+  (let* ((initial (substitute-if replacement-char
                                  (lambda (c) (not (or (alphanumericp c)
-                                                      (member c '(#\_)))))
+                                                      (eql c replacement-char))))
                                  name))
          (skip nil)
          (result (with-output-to-string (s)
                    (loop for c across initial
                          do (progn
-                              (unless (and (eql c #\_) skip)
+                              (unless (and (eql c replacement-char) skip)
                                 (format s "~A" c))
-                              (setf skip (eql c #\_)))))))
+                              (setf skip (eql c replacement-char)))))))
     result))
 
 ;;;
@@ -81,7 +82,7 @@ substituted with an underscore."
 
 (defun as-ecl-xpath (name)
   "Construct an ECL XPATH directive for NAME (typically an as-is JSON key)."
-  (format nil "{XPATH('~A')}" name))
+  (format nil "{XPATH('~A')}" (remove-illegal-chars name :replacement-char #\*)))
 
 (defun as-dataset-type (name)
   "Construct an ECL DATASET datatype, given NAME."
