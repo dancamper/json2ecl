@@ -136,8 +136,8 @@ was modified with the `f_` prefix and an ECL XPATH markup added.
 $ json2ecl foo.json
 
 FOO_LAYOUT := RECORD
-    UTF8 foo;
-    UNSIGNED start;
+    UTF8 foo {XPATH('foo')};
+    UNSIGNED start {XPATH('start')};
     REAL f_end {XPATH('end')};
 END;
 ````
@@ -150,8 +150,8 @@ be no separator characters between the files' contents, for instance).
 $ cat foo.json | json2ecl 
 
 TOPLEVEL_139_LAYOUT := RECORD
-    UTF8 foo;
-    UNSIGNED start;
+    UTF8 foo {XPATH('foo')};
+    UNSIGNED start {XPATH('start')};
     REAL f_end {XPATH('end')};
 END;
 ````
@@ -162,8 +162,8 @@ Simple example of overriding the default string ECL data type:
 $ json2ecl -s STRING foo.json
 
 FOO_LAYOUT := RECORD
-    STRING foo;
-    UNSIGNED start;
+    STRING foo {XPATH('foo')};
+    UNSIGNED start {XPATH('start')};
     REAL f_end {XPATH('end')};
 END;
 ````
@@ -192,10 +192,10 @@ were merged:
 $ json2ecl foo.json baz.json 
 
 TOPLEVEL_139_LAYOUT := RECORD
-    UTF8 foo;
-    UNSIGNED start;
+    UTF8 foo {XPATH('foo')};
+    UNSIGNED start {XPATH('start')};
     STRING f_end {XPATH('end')}; // null, float
-    REAL incr;
+    REAL incr {XPATH('incr')};
 END;
 ```
 
@@ -211,6 +211,8 @@ There are three basic JSON data types that json2ecl cares about: arrays, objects
 scalar values.  JSON's `null` is a wildcard type that is a valid value for any of those
 three.
 
+### Requirement: Same data type used throughout a JSON array
+
 Within a JSON array, json2ecl expects every element to be of the same basic type (array,
 object, scalar).  If it finds something else during parsing then it will abort and
 emit an error.  This example will throw an error because of the second array element is
@@ -224,6 +226,8 @@ not an object:
 ]
 ```
 
+### Requirement: Same data type used between objects with the same key
+
 Similarly, a repeated JSON object is expected to contain key values with the same type
 for same-named keys.  This example will throw an error because the third object's
 `foo` key has a value that is an array rather than a scalar:
@@ -235,6 +239,8 @@ for same-named keys.  This example will throw an error because the third object'
     { "foo": [ 789 ] }
 ]
 ```
+
+### Limitation: JSON structure as data
 
 Some JSON uses "structure as data" which is a bit rare but does come up in a few
 use cases.  Example:
@@ -257,21 +263,48 @@ data through json2ecl produces:
 
 ```none
 CHEVROLET_LAYOUT := RECORD
-    UNSIGNED last_year_seen;
+    UNSIGNED last_year_seen {XPATH('last_year_seen')};
 END;
 
 FORD_LAYOUT := RECORD
-    UNSIGNED last_year_seen;
+    UNSIGNED last_year_seen {XPATH('last_year_seen')};
 END;
 
 CAR_LAYOUT := RECORD
-    UTF8 manufacturer_type;
-    UTF8 country;
-    DATASET(CHEVROLET_LAYOUT) chevrolet;
-    DATASET(FORD_LAYOUT) ford;
+    UTF8 manufacturer_type {XPATH('manufacturer_type')};
+    UTF8 country {XPATH('country')};
+    DATASET(CHEVROLET_LAYOUT) chevrolet {XPATH('Chevrolet')};
+    DATASET(FORD_LAYOUT) ford {XPATH('Ford')};
 END;
 ```
 
 json2ecl creates child record structures based on name, not contents.  That ECL structure
 is valid and will work, but you can probably guess what would happen if there were
 100,000 automobile manufacturers instead of just two.
+
+### Limitation: Weird XPATH values
+
+JSON object keys are coerced into ECL field names (and child record structures when
+needed), so sometimes rewriting of of those keys is needed.  The XPATH notation,
+however, should remain the same as the original key value so that the parser can
+accurately walk the JSON structure.  Unfortunately, due to limitations within ECL's
+XPATH support, that XPATH value may look a bit odd.  Given this data:
+
+```json
+{
+    "this is a test": 123
+}
+```
+
+It parses to this structure:
+
+```none
+MULTIWORD_LAYOUT := RECORD
+    UNSIGNED this_is_a_test {XPATH('this*is*a*test')};
+END;
+```
+
+That XPATH works for reading, but if you turned around and tried to create a new
+JSON file from the dataset, with that XPATH notation still attached to that field,
+you will get an error.  The workaround is to rewrite the data, perhaps through a
+PROJECT(), into a structure without XPATH or at least with more sensible XPATH values.
