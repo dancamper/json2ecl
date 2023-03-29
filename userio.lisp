@@ -108,6 +108,7 @@ the type with this option.  The acceptable values are:~@
 
 (defun toplevel (argv)
   "CLI-level entry point."
+  #+sbcl
   (sb-ext:disable-debugger)
   (exit-on-ctrl-c
     (multiple-value-bind (arguments options) (adopt:parse-options-or-exit *ui* argv)
