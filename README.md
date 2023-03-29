@@ -1,11 +1,22 @@
-## Description
+# Table of Contents
 
-json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to parse it.
-The resulting ECL definitions are returned via standard out, suitable for piping or copying
-and pasting into your favorite IDE.
+- [Description](#description)
+- [Getting The Binary](#getting_the_binary)
+- [Building From Source](#building_from_source)
+- [How to Use](#how_to_use)
+- [Examples](#examples)
+- [Limitations](#limitations)
+
+<a name="description"></a>
+# Description
+
+json2ecl is a command-line tool that examines JSON data and deduces the
+ECL RECORD definitions necessary to parse it.  The resulting ECL definitions are returned
+via standard out, suitable for piping or copying and pasting into your favorite IDE.
 
 JSON data types are mapped to their equivalent ECL data types.  In the event that the
-same JSON key references multiple types (the most common being a field that is occassionally null), json2ecl will choose an ECL data type that can read both.  If this happens
+same JSON key references multiple types (the most common being a field that is occassionally
+null), json2ecl will choose an ECL data type that can read both.  If this happens
 then a comment will be added after the field declaration indicating which base data types
 were found, so you have an idea of how to handle that field when processing the file.
 
@@ -23,32 +34,39 @@ system, meaning that you supply a schema to the function that reads data for pro
 An "ECL record definition" in this context means that schema:  json2ecl generates the
 schema as text that can be pasted into an IDE and used within an ECL program.
 
-## Requirements
+<a name="getting_the_binary"></a>
+# Getting The Binary
 
-This project was written using SBCL and it has not been tested with other flavors
-of Lisp.  There are very few dependencies, however, so it should work out of the box
-with all of the common Lisp distributions.
+*TO-DO*
+
+<a name="building_from_source"></a>
+# Building From Source
+
+This project was written using [Steel Bank Common Lisp (SBCL)](http://www.sbcl.org) and
+it has not been tested with other flavors of Lisp.  There are very few dependencies,
+however, so it should work with minimal modifications with all of the Common Lisp
+distributions.
 
 The following dependencies are required:
 
-- ASDF (version 3.3.6 or later)
-- Quicklisp
-- Packages installed via QuickLisp
-  - :adopt
-  - :com.inuoe.jzon
-  - :with-user-abort
-- Buildapp
-  - Used to build the binary
-  - [https://www.xach.com/lisp/buildapp/](https://www.xach.com/lisp/buildapp/)
+- [ASDF](https://asdf.common-lisp.dev) (version 3.3.0 or later)
+- [Quicklisp](https://www.quicklisp.org/beta/)
+  - Packages installed via QuickLisp by the build script
+    - [adopt](https://docs.stevelosh.com/adopt/) (parsing common-line options and arguments)
+    - [com.inuoe.jzon](https://github.com/Zulu-Inuoe/jzon) (SAX-style JSON parsing)
+    - [with-user-abort](https://github.com/compufox/with-user-abort) (handles ctrl-c)
+- [Buildapp](https://www.xach.com/lisp/buildapp/) (used to build the binary)
 
-## How to Build (for *nix-compatible systems)
+## Build Instructions (for *nix-compatible systems)
 
 1. Clone this repo:  `git clone https://github.com/dancamper/json2ecl.git`
 1. Change directory: `cd json2ecl`
 1. Run build script: `./build_binary.sh`
-1. Final binary is now `bin/json2ecl`.  You can move or copy that binary to a location on your path.
 
-## How to Use
+Built binary is `bin/json2ecl`.  You can move or copy it to a location on your path.
+
+<a name="how_to_use"></a>
+# How to Use
 
 Usage: `json2ecl [OPTIONS] [FILE...]`
 
@@ -98,7 +116,8 @@ the type with this option.  The acceptable values are:
 - `STRING`: An ASCII string.
 - `VARSTRING`:  A C-style null-terminated ASCII string.  Don't use this unless you know why you need it.
 
-## Examples
+<a name="examples"></a>
+# Examples
 
 Assuming file foo.json contains the following contents:
 
@@ -111,13 +130,14 @@ Assuming file foo.json contains the following contents:
 ```
 
 Simple parsing of those contents.  The `end` JSON key is an ECL keyword, so it
-was modified with the `f_` prefix.
+was modified with the `f_` prefix and an ECL XPATH markup added.
 
 ```none
 $ json2ecl foo.json
+
 FOO_LAYOUT := RECORD
-    UTF8 foo {XPATH('foo')};
-    INTEGER start {XPATH('start')};
+    UTF8 foo;
+    UNSIGNED start;
     REAL f_end {XPATH('end')};
 END;
 ````
@@ -128,9 +148,10 @@ be no separator characters between the files' contents, for instance).
 
 ```none
 $ cat foo.json | json2ecl 
-TOPLEVEL_231_LAYOUT := RECORD
-    UTF8 foo {XPATH('foo')};
-    INTEGER start {XPATH('start')};
+
+TOPLEVEL_139_LAYOUT := RECORD
+    UTF8 foo;
+    UNSIGNED start;
     REAL f_end {XPATH('end')};
 END;
 ````
@@ -139,9 +160,10 @@ Simple example of overriding the default string ECL data type:
 
 ```none
 $ json2ecl -s STRING foo.json
+
 FOO_LAYOUT := RECORD
-    STRING foo {XPATH('foo')};
-    INTEGER start {XPATH('start')};
+    STRING foo;
+    UNSIGNED start;
     REAL f_end {XPATH('end')};
 END;
 ````
@@ -168,10 +190,88 @@ were merged:
 
 ```none
 $ json2ecl foo.json baz.json 
+
 TOPLEVEL_139_LAYOUT := RECORD
-    UTF8 foo {XPATH('foo')};
-    INTEGER start {XPATH('start')};
+    UTF8 foo;
+    UNSIGNED start;
     STRING f_end {XPATH('end')}; // null, float
-    REAL incr {XPATH('incr')};
+    REAL incr;
 END;
 ```
+
+<a name="limitations"></a>
+# Limitations
+
+If you're importing JSON data into a big data system then an underlying assumption is that
+the data is composed of repeated structure:  records, in other words.  JSON itself does
+not impose any structure on the data, and therein lies some potential limitations and
+problems.
+
+There are three basic JSON data types that json2ecl cares about: arrays, objects, and
+scalar values.  JSON's `null` is a wildcard type that is a valid value for any of those
+three.
+
+Within a JSON array, json2ecl expects every element to be of the same basic type (array,
+object, scalar).  If it finds something else during parsing then it will abort and
+emit an error.  This example will throw an error because of the second array element is
+not an object:
+
+```json
+[
+    { "foo": 123 },
+    "Hi there",
+    { "foo": 456 }
+]
+```
+
+Similarly, a repeated JSON object is expected to contain key values with the same type
+for same-named keys.  This example will throw an error because the third object's
+`foo` key has a value that is an array rather than a scalar:
+
+```json
+[
+    { "foo": 123 },
+    { "foo": 456 },
+    { "foo": [ 789 ] }
+]
+```
+
+Some JSON uses "structure as data" which is a bit rare but does come up in a few
+use cases.  Example:
+
+```json
+{
+    "manufacturer_type": "automobiles",
+    "country": "United States",
+    "Chevrolet": {
+        "last_year_seen": 2023
+    },
+    "Ford": {
+        "last_year_seen": 2023
+    }
+}
+```
+
+In that example, the automobile manufacturer's name is the JSON object key.  Running that
+data through json2ecl produces:
+
+```none
+CHEVROLET_LAYOUT := RECORD
+    UNSIGNED last_year_seen;
+END;
+
+FORD_LAYOUT := RECORD
+    UNSIGNED last_year_seen;
+END;
+
+CAR_LAYOUT := RECORD
+    UTF8 manufacturer_type;
+    UTF8 country;
+    DATASET(CHEVROLET_LAYOUT) chevrolet;
+    DATASET(FORD_LAYOUT) ford;
+END;
+```
+
+json2ecl creates child record structures based on name, not contents.  That ECL structure
+is valid and will work, but you can probably guess what would happen if there were
+100,000 automobile manufacturers instead of just two.
