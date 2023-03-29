@@ -90,8 +90,7 @@ replacement characters down to a single occurrence."
 (defun as-ecl-xpath (name)
   "Construct an ECL XPATH directive for NAME (typically an as-is JSON key)."
   (let ((cleaned-name (remove-illegal-chars name :replacement-char #\* :keep-char-list '(#\-))))
-    (unless (equalp cleaned-name (as-ecl-field-name name))
-      (format nil "{XPATH('~A')}" cleaned-name))))
+    (format nil "{XPATH('~A')}" cleaned-name)))
 
 (defun as-dataset-type (name)
   "Construct an ECL DATASET datatype, given NAME."
@@ -137,10 +136,7 @@ as an ECL comment describing those types."
          (xpath (as-ecl-xpath name))
          (comment (as-value-comment value-obj))
          (field-def (with-output-to-string (s)
-                      (format s "~4T~A ~A" ecl-type (as-ecl-field-name name))
-                      (when xpath
-                        (format s " ~A" xpath))
-                      (format s ";")
+                      (format s "~4T~A ~A ~A;" ecl-type (as-ecl-field-name name) xpath)
                       (when comment
                         (format s " ~A" comment))
                       (format s "~%"))))
@@ -149,9 +145,7 @@ as an ECL comment describing those types."
 (defmethod as-ecl-field-def ((obj object-item) name)
   (let* ((xpath (as-ecl-xpath name))
          (field-def (with-output-to-string (s)
-                      (format s "~4T~A ~A" (as-dataset-type name) (as-ecl-field-name name))
-                      (when xpath
-                        (format s " ~A" xpath))
+                      (format s "~4T~A ~A ~A" (as-dataset-type name) (as-ecl-field-name name) xpath)
                       (format s ";~%"))))
     field-def))
 
@@ -162,9 +156,7 @@ as an ECL comment describing those types."
                       (if (element-type obj)
                           (format s "~4TSET OF ~A" (as-ecl-type (reduce-base-type (element-type obj))))
                           (format s "~4T~A" (as-dataset-type name)))
-                      (format s " ~A" field-name)
-                      (when xpath
-                        (format s " ~A" xpath))
+                      (format s " ~A ~A" field-name xpath)
                       (format s ";~%"))))
     field-def))
 
