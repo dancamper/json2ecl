@@ -208,8 +208,9 @@ not impose any structure on the data, and therein lies some potential limitation
 problems.
 
 There are three basic JSON data types that json2ecl cares about: arrays, objects, and
-scalar values.  JSON's `null` is a wildcard type that is a valid value for any of those
-three.
+scalar values.  json2ecl does consider all scalar data types "the same" though, so you can
+mix numbers and strings, for example.  JSON's `null` is a wildcard type that is a valid
+value for any of those three.
 
 ### Requirement: Same data type used throughout a JSON array
 
@@ -285,7 +286,7 @@ is valid and will work, but you can probably guess what would happen if there we
 ### Limitation: Weird XPATH values
 
 JSON object keys are coerced into ECL field names (and child record structures when
-needed), so sometimes rewriting of of those keys is needed.  The XPATH notation,
+needed), so sometimes rewriting those keys is needed.  The XPATH notation,
 however, should remain the same as the original key value so that the parser can
 accurately walk the JSON structure.  Unfortunately, due to limitations within ECL's
 XPATH support, that XPATH value may look a bit odd.  Given this data:
@@ -296,7 +297,7 @@ XPATH support, that XPATH value may look a bit odd.  Given this data:
 }
 ```
 
-It parses to this structure:
+It parses to this structure (note the XPATH):
 
 ```none
 MULTIWORD_LAYOUT := RECORD
@@ -304,7 +305,7 @@ MULTIWORD_LAYOUT := RECORD
 END;
 ```
 
-That XPATH works for reading, but if you turned around and tried to create a new
-JSON file from the dataset, with that XPATH notation still attached to that field,
+That XPATH works for reading, but if you turned around and tried to write a new
+JSON file from the dataset using ECL, with that XPATH notation still attached to that field,
 you will get an error.  The workaround is to rewrite the data, perhaps through a
 PROJECT(), into a structure without XPATH or at least with more sensible XPATH values.
