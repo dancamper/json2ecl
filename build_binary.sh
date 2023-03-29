@@ -11,7 +11,7 @@ set -euo pipefail
 mkdir -p bin
 
 buildapp --output bin/json2ecl \
-         --eval "(let ((quicklisp-init (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))) (when (probe-file quicklisp-init) (load quicklisp-init)))" \
+         --eval "(let* ((home-dir (user-homedir-pathname)) (setup (or (probe-file (merge-pathnames \"quicklisp/setup.lisp\" home-dir)) (probe-file (merge-pathnames \"portacle/all/quicklisp/setup.lisp\" home-dir))))) (load setup))" \
          --eval "(require :asdf)" \
          --eval "(ql:quickload '(:adopt :com.inuoe.jzon :with-user-abort) :silent t)" \
          --asdf-path ~/quicklisp/dists \
