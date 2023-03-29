@@ -37,7 +37,9 @@ schema as text that can be pasted into an IDE and used within an ECL program.
 <a name="getting_the_binary"></a>
 # Getting The Binary
 
-*TO-DO*
+Head over the [releases](https://github.com/dancamper/json2ecl/releases) section of
+the Github repo and choose the version that matches your operating system.  Decompress
+the file and put the result somewhere on your PATH for easy reference.
 
 <a name="building_from_source"></a>
 # Building From Source
