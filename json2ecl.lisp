@@ -264,7 +264,7 @@ then kick off a new depth of parsing with the result."
 
 (defmethod parse-obj ((obj t) parser (is-toplevel-p (eql t)))
   (loop named parse
-        do (multiple-value-bind (event value) (jzon:parse-next parser)
+        do (multiple-value-bind (event value) (com.inuoe.jzon:parse-next parser)
              (cond ((null event)
                     (return-from parse))
                    ((eql event :begin-array)
@@ -279,7 +279,7 @@ then kick off a new depth of parsing with the result."
 
 (defmethod parse-obj ((obj array-item) parser (is-toplevel-p (eql nil)))
   (loop named parse
-        do (multiple-value-bind (event value) (jzon:parse-next parser)
+        do (multiple-value-bind (event value) (com.inuoe.jzon:parse-next parser)
              (cond ((null event)
                     (error "json2ecl: Unexpected end of file"))
                    ((eql event :end-array)
@@ -300,13 +300,13 @@ then kick off a new depth of parsing with the result."
 
 (defmethod parse-obj ((obj object-item) parser (is-toplevel-p (eql nil)))
   (loop named parse
-        do (multiple-value-bind (event value) (jzon:parse-next parser)
+        do (multiple-value-bind (event value) (com.inuoe.jzon:parse-next parser)
              (cond ((null event)
                     (error "json2ecl: Unexpected end of file"))
                    ((eql event :end-object)
                     (return-from parse))
                    ((eql event :object-key)
-                    (multiple-value-bind (key-event key-value) (jzon:parse-next parser)
+                    (multiple-value-bind (key-event key-value) (com.inuoe.jzon:parse-next parser)
                       (case key-event
                         ((:value)
                          (parse-simple (gethash value (keys obj)) key-value))
@@ -325,10 +325,10 @@ then kick off a new depth of parsing with the result."
 (defun process-file-or-stream (input parsed-obj)
   "Entry point for parsing a single JSON data blob; INPUT can be a pathname
 or a file stream; PARSED-OBJ should be a toplevel object."
-  (jzon:with-parser (parser input)
+  (com.inuoe.jzon:with-parser (parser input)
     (handler-case (setf parsed-obj (parse-obj parsed-obj parser t))
-      (error (e) (jzon::%raise 'jzon:json-parse-error
-                               (slot-value parser 'jzon::%pos)
-                               (format nil "~A" e)))))
+      (error (e) (com.inuoe.jzon::%raise 'com.inuoe.jzon:json-parse-error
+                                         (slot-value parser 'com.inuoe.jzon::%pos)
+                                         (format nil "~A" e)))))
   parsed-obj)
 

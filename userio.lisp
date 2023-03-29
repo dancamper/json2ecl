@@ -119,5 +119,5 @@ the type with this option.  The acceptable values are:~@
              (adopt:print-help-and-exit *ui*)))
       (handler-case (run (cdr arguments) :string-type (gethash 'string-type options))
         (user-error (e) (adopt:print-error-and-exit e))
-        (jzon:json-error (e) (adopt:print-error-and-exit e)))))
+        (com.inuoe.jzon:json-error (e) (adopt:print-error-and-exit e)))))
   (adopt:exit))
