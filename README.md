@@ -56,6 +56,7 @@ The following dependencies are required:
     - [com.inuoe.jzon](https://github.com/Zulu-Inuoe/jzon) (SAX-style JSON parsing)
     - [with-user-abort](https://github.com/compufox/with-user-abort) (handles ctrl-c)
 - [Buildapp](https://www.xach.com/lisp/buildapp/) (used to build the binary)
+  - Note that the `buildapp` binary as well as your Lisp's binary must be on your PATH.
 
 ## Build Instructions (for *nix-compatible systems)
 
