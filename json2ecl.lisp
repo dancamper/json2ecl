@@ -20,8 +20,7 @@ with an option.")
 ;;;
 
 (defclass array-item ()
-  ((object-prototype :accessor object-prototype :initform nil)
-   (element-type :accessor element-type :initform nil)))
+  ((element-type :accessor element-type :initform nil)))
 
 (defclass object-item ()
   ((keys :accessor keys :initform (make-hash-table :test 'equalp :size 25))))
@@ -153,7 +152,7 @@ as an ECL comment describing those types."
   (let* ((field-name (as-ecl-field-name name))
          (xpath (as-ecl-xpath name))
          (field-def (with-output-to-string (s)
-                      (if (element-type obj)
+                      (if (listp (element-type obj))
                           (format s "~4TSET OF ~A" (as-ecl-type (reduce-base-type (element-type obj))))
                           (format s "~4T~A" (as-dataset-type name)))
                       (format s " ~A ~A" field-name xpath)
@@ -183,9 +182,10 @@ as an ECL comment describing those types."
     (format nil "~A~A" result-str my-str)))
 
 (defmethod as-ecl-record-def ((obj array-item) name)
-  (if (object-prototype obj)
-      (as-ecl-record-def (object-prototype obj) name)
-      ""))
+  (etypecase (element-type obj)
+    (array-item (as-ecl-record-def (element-type obj) name))
+    (object-item (as-ecl-record-def (element-type obj) name))
+    (t "")))
 
 ;;;
 
@@ -193,7 +193,7 @@ as an ECL comment describing those types."
   "Return object found in PLACE if it is an instance of CLASSNAME, or create a
 new instance of CLASSNAME in place and return that."
   `(progn
-     (cond ((or (null ,place) (eql ,place 'null-value))
+     (cond ((or (null ,place) (not ,place) (eql ,place 'null-value))
             (setf ,place (make-instance ,classname)))
            ((and (consp ,place) (eql (car ,place) 'null-value))
             (setf ,place (make-instance ,classname)))
@@ -202,11 +202,6 @@ new instance of CLASSNAME in place and return that."
                    (type-of ,place)
                    ,classname)))
      ,place))
-
-;; (defmacro parse-simple (place value)
-;;   "Insert the common type of VALUE and PLACE into PLACE."
-;;   `(unless (or (typep ,place 'array-item) (typep ,place 'object-item))
-;;      (setf ,place (common-type (base-type ,value) ,place))))
 
 (defmacro parse-simple (place value)
   "Pushes the base type of VALUE onto the sequence PLACE."
@@ -283,17 +278,15 @@ then kick off a new depth of parsing with the result."
              (cond ((null event)
                     (error "json2ecl: Unexpected end of file"))
                    ((eql event :end-array)
-                    (when (and (null (object-prototype obj))
-                               (null (element-type obj)))
-                                        ; absent any type info, we will call this an array of nulls
+                    (when (not (element-type obj))
                       (pushnew 'null-value (element-type obj)))
                     (return-from parse))
                    ((eql event :value)
                     (parse-simple (element-type obj) value))
                    ((eql event :begin-array)
-                    (parse-complex (object-prototype obj) 'array-item parser))
+                    (parse-complex (element-type obj) 'array-item parser))
                    ((eql event :begin-object)
-                    (parse-complex (object-prototype obj) 'object-item parser))
+                    (parse-complex (element-type obj) 'object-item parser))
                    (t
                     (error "json2ecl: Unknown object while parsing array: (~A,~A)" event value)))))
   obj)
