@@ -58,7 +58,18 @@ JSON data can be supplied as one or more files or via standard input.~@
 ~@
 Multiple files, if provided, are parsed as if they should have the same record structure. ~
 This is useful for cases where you suspect that not all JSON key/value objects are fully ~
-defined in one file, and other files may contain the missing data.")
+defined in one file, and other files may contain the missing data.~@
+~@
+ECL keywords, in general, should not be used as field names in record definitions. ~
+json2ecl will prefix those fields with 'f_' when defining those field names.  Other ~
+minor changes to the field names are also made (such as converting dashes to ~
+underscores).~@
+~@
+The last ECL record definition in the output will be the 'root' definition; it ~
+is the one you should pass to the ECL DATASET() function.  If you pass exactly ~
+one file to json2ecl then that record definition will be named after the file. ~
+If you pass multiple files, or stream JSON data in via standard input, then the ~
+layout will be named TOPLEVEL with some added items to make it unique.")
 
 (defparameter *ui*
   (adopt:make-interface :name "json2ecl"
