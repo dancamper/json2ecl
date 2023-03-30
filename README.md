@@ -202,6 +202,34 @@ TOPLEVEL_139_LAYOUT := RECORD
 END;
 ```
 
+One of the more interesting uses for json2ecl is determining the record structure
+needed to parse a REST API call, which is usually in JSON format.  Here is a call
+showing an example REST reply:
+
+```none
+$ curl -s 'https://jsonplaceholder.typicode.com/todos/1'
+
+{
+  "userId": 1,
+  "id": 1,
+  "title": "delectus aut autem",
+  "completed": false
+}
+```
+
+You can pipe that directly to json2ecl:
+
+```none
+$ curl -s 'https://jsonplaceholder.typicode.com/todos/1' | json2ecl
+
+TOPLEVEL_139_LAYOUT := RECORD
+    UNSIGNED userid {XPATH('userId')};
+    UNSIGNED id {XPATH('id')};
+    UTF8 title {XPATH('title')};
+    BOOLEAN completed {XPATH('completed')};
+END;
+```
+
 <a name="limitations"></a>
 # Limitations
 
