@@ -24,34 +24,29 @@
   (adopt:make-option 'string-type
                      :result-key 'string-type
                      :parameter "STRING-TYPE"
-                     :help (format nil "ECL datatype to use for strings; must be one of ~
+                     :help (format nil "ECL datatype to use for JSON strings; must be one of ~
                                         UTF8|STRING|VARSTRING; defaults to UTF8")
                      :long "string-type"
                      :short #\s
                      :initial-value "UTF8"
                      :reduce #'adopt:last))
 
+(defparameter *option-group-output*
+  (adopt:make-group 'output-options
+                    :title "Output Options"
+                    :help "These options affect how the ECL RECORD structures are created."
+                    :options (list *option-ecl-string-type*)))
+
 (adopt:define-string *help-text*
   "json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to parse it. ~
-The resulting ECL definitions are returned via standard out, suitable for piping or copying ~
-and pasting into your favorite IDE.~@
+The resulting ECL definitions are returned via standard out, suitable for piping or pasting ~
+into your favorite IDE.~@
 ~@
 JSON data can be supplied as one or more files or via standard input.~@
 ~@
 Multiple files, if provided, are parsed as if they should have the same record structure. ~
 This is useful for cases where you suspect that not all JSON key/value objects are fully ~
-defined in one file, but other files may contain the missing data.~@
-~@
-The `-h` and `-v` versions should be obvious.~@
-~@
-The -s option allows you to override the ECL datatype used for string values. ~
-Because JSON data is normally in UTF-8 format, UTF8 is the default ECL data type for ~
-those values.  However, if you know that the data is in plain ASCII then you can override ~
-the type with this option.  The acceptable values are:~@
-~@
-- UTF8: A UTF-8 string; this is the default.~@
-- STRING: An ASCII string.~@
-- VARSTRING:  A C-style null-terminated string.  Don't use this unless you know why you need it.")
+defined in one file, and other files may contain the missing data.")
 
 (defparameter *ui*
   (adopt:make-interface :name "json2ecl"
@@ -62,7 +57,7 @@ the type with this option.  The acceptable values are:~@
                         :contents (list
                                    *option-version*
                                    *option-help*
-                                   *option-ecl-string-type*)))
+                                   *option-group-output*)))
 
 ;;;
 
