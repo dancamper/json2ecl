@@ -1,6 +1,4 @@
 ;;;; json2ecl.lisp
-;;;;
-;;;; See https://github.com/Zulu-Inuoe/jzon
 
 (in-package #:json2ecl)
 
@@ -35,11 +33,12 @@ with an option.")
   "Return a copy of NAME with characters illegal for ECL attribute names
 substituted with a replacment character, then reducing runs of those
 replacement characters down to a single occurrence."
-  (let* ((keep-chars (reduce 'cons keep-char-list :initial-value (list #\_ replacement-char) :from-end t))
+  (let* ((keep-chars (reduce 'cons keep-char-list
+                             :initial-value (list #\_ replacement-char)
+                             :from-end t))
          (initial (substitute-if replacement-char
-                                    (lambda (c) (not (or (alphanumericp c)
-                                                         (member c keep-chars))))
-                                    name))
+                                 (lambda (c) (not (or (alphanumericp c) (member c keep-chars))))
+                                 name))
          (skip nil)
          (result (with-output-to-string (s)
                    (loop for c across initial
@@ -57,6 +56,27 @@ replacement characters down to a single occurrence."
           (if (char= (elt name 0) #\_) "" "_")
           name))
 
+(defun legal-layout-subname (name)
+  "Return a copy of NAME that can be used within a RECORD name."
+  (let ((initial (string-upcase (remove-illegal-chars name))))
+    (if (not (alpha-char-p (elt initial 0)))
+        (apply-prefix initial "F")
+        initial)))
+
+(defun register-layout-subname (name)
+  "Push layout subname NAME to a special variable list so we can track usage."
+  (let ((legal-name (legal-layout-subname name)))
+    (push legal-name *layout-names*)))
+
+;;;
+
+(defun as-layout-name (name)
+  "Construct a string that is a suitable ECL RECORD attribute, based on NAME."
+  (let* ((legal-name (legal-layout-subname name))
+         (name-count (count-if #'(lambda (x) (equalp x legal-name)) *layout-names*))
+         (interstitial (if (< name-count 2) "" (format nil "_~3,'0D" name-count))))
+    (format nil "~A~A_LAYOUT" legal-name interstitial)))
+
 (defun as-ecl-field-name (name)
   "Return a copy of NAME that is suitable to be used as an ECL attribute."
   (let* ((lowername (string-downcase name))
@@ -66,25 +86,6 @@ replacement characters down to a single occurrence."
                     (apply-prefix no-dashes "f")
                     no-dashes)))
     legal))
-
-(defun legal-layout-subname (name)
-  "Return a copy of NAME that can be used within a RECORD name."
-  (let ((initial (string-upcase (remove-illegal-chars name))))
-    (if (not (alpha-char-p (elt initial 0)))
-        (apply-prefix initial "F")
-        initial)))
-
-(defun as-layout-name (name)
-  "Construct a string that is a suitable ECL RECORD attribute, based on NAME."
-  (let* ((legal-name (legal-layout-subname name))
-         (name-count (count-if #'(lambda (x) (equalp x legal-name)) *layout-names*))
-         (interstitial (if (< name-count 2) "" (format nil "_~3,'0D" name-count))))
-    (format nil "~A~A_LAYOUT" legal-name interstitial)))
-
-(defun register-layout-subname (name)
-  "Push layout subname NAME to a special variable list so we can track usage."
-  (let ((legal-name (legal-layout-subname name)))
-    (push legal-name *layout-names*)))
 
 (defun as-ecl-xpath (name)
   "Construct an ECL XPATH directive for NAME (typically an as-is JSON key)."
@@ -158,6 +159,8 @@ as an ECL comment describing those types."
                       (format s " ~A ~A" field-name xpath)
                       (format s ";~%"))))
     field-def))
+
+;;;
 
 (defgeneric as-ecl-record-def (obj name)
   (:documentation "Create an ECL RECORD definition from an object or array class."))
@@ -308,7 +311,8 @@ then kick off a new depth of parsing with the result."
                         ((:begin-object)
                          (parse-complex (gethash value (keys obj)) 'object-item parser))
                         (otherwise
-                         (error "json2ecl: Unknown object while parsing object value: (~A,~A)" key-event key-value)))))
+                         (error "json2ecl: Unknown object while parsing object value: (~A,~A)"
+                                key-event key-value)))))
                    (t
                     (error "json2ecl: Unknown object while parsing object: (~A,~A)" event value)))))
   obj)
