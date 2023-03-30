@@ -37,6 +37,18 @@
                     :help "These options affect how the ECL RECORD structures are created."
                     :options (list *option-ecl-string-type*)))
 
+(defparameter *examples*
+  '(("Process a single JSON data file:"
+     . "json2ecl foo.json")
+    ("Process multiple specific JSON data files, using STRING datatype:"
+     . "json2ecl -s STRING foo.json bar.json baz.json")
+    ("Process all JSON files in the current directory:"
+     . "json2ecl *.json")
+    ("Process JSON data coming from a file via stdin:"
+     . "cat foo.json | json2ecl")
+    ("Process a REST result:"
+     . "curl -s 'https://jsonplaceholder.typicode.com/todos' | json2ecl")))
+
 (adopt:define-string *help-text*
   "json2ecl examines JSON data and deduces the ECL RECORD definitions necessary to parse it. ~
 The resulting ECL definitions are returned via standard out, suitable for piping or pasting ~
@@ -54,6 +66,7 @@ defined in one file, and other files may contain the missing data.")
                         :summary (format nil "analyze JSON data and emit ECL record ~
                                               definitions that can parse that data")
                         :help *help-text*
+                        :examples *examples*
                         :contents (list
                                    *option-version*
                                    *option-help*
