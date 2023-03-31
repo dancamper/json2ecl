@@ -12,19 +12,7 @@
 
 json2ecl is a command-line tool that examines JSON data and deduces the
 ECL RECORD definitions necessary to parse it.  The resulting ECL definitions are returned
-via standard out, suitable for piping or copying and pasting into your favorite IDE.
-
-JSON data types are mapped to their equivalent ECL data types.  In the event that the
-same JSON key references multiple types (the most common being a field that is occassionally
-null), json2ecl will choose an ECL data type that can read both.  If this happens
-then a comment will be added after the field declaration indicating which base data types
-were found, so you have an idea of how to handle that field when processing the file.
-
-JSON data can be supplied as one or more files or via standard input.
-
-Multiple files, if provided, are parsed as if they should have the same record structure.
-This is useful for cases where you suspect that not all JSON key/value objects are fully
-defined in one file, but other files may contain the missing data.
+via standard out, suitable for piping or pasting into your favorite IDE.
 
 ## ECL Record Definitions ???
 
