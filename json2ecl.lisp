@@ -38,15 +38,14 @@ replacement characters down to a single occurrence."
                              :from-end t))
          (initial (substitute-if replacement-char
                                  (lambda (c) (not (or (alphanumericp c) (member c keep-chars))))
-                                 name))
-         (skip nil)
-         (result (with-output-to-string (s)
-                   (loop for c across initial
-                         do (progn
-                              (unless (and (eql c replacement-char) skip)
-                                (format s "~A" c))
-                              (setf skip (eql c replacement-char)))))))
-    result))
+                                 (or name ""))))
+    (with-output-to-string (s)
+      (loop for c across initial
+            with skip = nil
+            do (progn
+                 (unless (and (eql c replacement-char) skip)
+                   (format s "~A" c))
+                 (setf skip (eql c replacement-char)))))))
 
 ;;;
 
@@ -80,12 +79,11 @@ replacement characters down to a single occurrence."
 (defun as-ecl-field-name (name)
   "Return a copy of NAME that is suitable to be used as an ECL attribute."
   (let* ((lowername (string-downcase name))
-         (no-dashes (remove-illegal-chars lowername))
-         (legal (if (or (not (alpha-char-p (elt no-dashes 0)))
-                        (is-ecl-keyword-p no-dashes))
-                    (apply-prefix no-dashes "f")
-                    no-dashes)))
-    legal))
+         (no-dashes (remove-illegal-chars lowername)))
+    (if (or (not (alpha-char-p (elt no-dashes 0)))
+            (is-ecl-keyword-p no-dashes))
+        (apply-prefix no-dashes "f")
+        no-dashes)))
 
 (defun as-ecl-xpath (name)
   "Construct an ECL XPATH directive for NAME (typically an as-is JSON key)."
@@ -132,33 +130,30 @@ as an ECL comment describing those types."
   (:documentation "Create an ECL field definition from an object or array class."))
 
 (defmethod as-ecl-field-def ((value-obj t) name)
-  (let* ((ecl-type (as-ecl-type value-obj))
-         (xpath (as-ecl-xpath name))
-         (comment (as-value-comment value-obj))
-         (field-def (with-output-to-string (s)
-                      (format s "~4T~A ~A ~A;" ecl-type (as-ecl-field-name name) xpath)
-                      (when comment
-                        (format s " ~A" comment))
-                      (format s "~%"))))
-    field-def))
+  (let ((ecl-type (as-ecl-type value-obj))
+        (xpath (as-ecl-xpath name))
+        (comment (as-value-comment value-obj)))
+    (with-output-to-string (s)
+      (format s "~4T~A ~A ~A;" ecl-type (as-ecl-field-name name) xpath)
+      (when comment
+        (format s " ~A" comment))
+      (format s "~%"))))
 
 (defmethod as-ecl-field-def ((obj object-item) name)
-  (let* ((xpath (as-ecl-xpath name))
-         (field-def (with-output-to-string (s)
-                      (format s "~4T~A ~A ~A" (as-dataset-type name) (as-ecl-field-name name) xpath)
-                      (format s ";~%"))))
-    field-def))
+  (let ((xpath (as-ecl-xpath name)))
+    (with-output-to-string (s)
+      (format s "~4T~A ~A ~A" (as-dataset-type name) (as-ecl-field-name name) xpath)
+      (format s ";~%"))))
 
 (defmethod as-ecl-field-def ((obj array-item) name)
-  (let* ((field-name (as-ecl-field-name name))
-         (xpath (as-ecl-xpath name))
-         (field-def (with-output-to-string (s)
-                      (if (listp (element-type obj))
-                          (format s "~4TSET OF ~A" (as-ecl-type (reduce-base-type (element-type obj))))
-                          (format s "~4T~A" (as-dataset-type name)))
-                      (format s " ~A ~A" field-name xpath)
-                      (format s ";~%"))))
-    field-def))
+  (let ((field-name (as-ecl-field-name name))
+        (xpath (as-ecl-xpath name)))
+    (with-output-to-string (s)
+      (if (listp (element-type obj))
+          (format s "~4TSET OF ~A" (as-ecl-type (reduce-base-type (element-type obj))))
+          (format s "~4T~A" (as-dataset-type name)))
+      (format s " ~A ~A" field-name xpath)
+      (format s ";~%"))))
 
 ;;;
 
