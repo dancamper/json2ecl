@@ -69,7 +69,9 @@ The last ECL record definition in the output will be the 'root' definition; it ~
 is the one you should pass to the ECL DATASET() function.  If you pass exactly ~
 one file to json2ecl then that record definition will be named after the file. ~
 If you pass multiple files, or stream JSON data in via standard input, then the ~
-layout will be named TOPLEVEL with some added items to make it unique.")
+layout will be named TOPLEVEL with some added items to make it unique.~@
+~@
+Home: https://github.com/dancamper/json2ecl")
 
 (defparameter *ui*
   (adopt:make-interface :name "json2ecl"
