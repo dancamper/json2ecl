@@ -14,6 +14,8 @@ json2ecl is a command-line tool that examines JSON data and deduces the
 ECL RECORD definitions necessary to parse it.  The resulting ECL definitions are returned
 via standard out, suitable for piping or pasting into your favorite IDE.
 
+See [xml2ecl](https://github.com/dancamper/xml2ecl) for an XML version of this functionality.
+
 ## ECL Record Definitions ???
 
 [HPCC Systems](https://hpccsystems.com) is a big data system that is programmed using a
